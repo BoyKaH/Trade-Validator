@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Validator">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <title>Pre-Trade Validator</title>
+  <style>
+    :root{
+      --bg:#0f0f0f;--panel:#161616;
+      --text:#ededed;--dim:#575757;--red:#ef6464;--red-bg:#2a0e0e;
+      --orange:#e3a33f;--orange-bg:#271b08;--green:#3ed29f;--green-bg:#08241a;
+      --violet-bg:#17142b;--premium:#64d8ff;--premium-bg:#071f35;
+      --safe-top:max(12px,env(safe-area-inset-top));--safe-bottom:max(12px,env(safe-area-inset-bottom));
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg);scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;padding:var(--safe-top) 12px calc(112px + var(--safe-bottom));overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+    button,input,select,textarea{font:inherit}
+    button{color:inherit}
+    button:disabled{cursor:not-allowed;opacity:.46}
+    button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #d7d7d7;outline-offset:2px}
+    .app{width:100%;max-width:560px;min-width:0;margin:0 auto}
+    .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin:2px 2px 9px}
+    .brand{font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;color:#aaa;white-space:nowrap;padding-top:2px}
+    .top-copy{text-align:right;min-width:0}
+    .objective{font-size:9px;font-weight:850;letter-spacing:.035em;color:#c7a55e;line-height:1.25}
+    .phrase{font-size:9px;color:var(--dim);line-height:1.25;margin-top:3px}
+    .timing{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 14px;margin:0 2px 10px;padding:8px 0;border-bottom:1px solid #252525;color:#999;font-size:10px;line-height:1.5;font-variant-numeric:tabular-nums}
+    .timing-clock{color:#b8b8b8;white-space:nowrap}.timing-session{color:#aaa}.timing-next{color:#858585}
+    .timing-market{color:#b8b8b8}
+    .timing-note{flex-basis:100%;font-size:8px;color:#737373}
+    .timing-progress{flex-basis:100%;min-width:0}.timing-progress[hidden]{display:none}
+    .timing-progress progress{display:block;width:100%;height:3px;border:0;border-radius:2px;overflow:hidden;background:#2b2b2b;color:#929ba3;appearance:none;-webkit-appearance:none}
+    .timing-progress progress::-webkit-progress-bar{background:#2b2b2b;border-radius:2px}
+    .timing-progress progress::-webkit-progress-value{background:#929ba3;border-radius:2px}
+    .timing-progress progress::-moz-progress-bar{background:#929ba3;border-radius:2px}
+    .timing-progress-labels{display:flex;justify-content:space-between;margin-top:3px;font-size:8px;color:#737373}
+    .process-card,.verdict-card{background:var(--panel);border:1px solid #252525;border-radius:14px}
+    #main-content{min-width:0}
+    .progress{position:sticky;z-index:120;top:env(safe-area-inset-top,0px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:7px -4px;padding:6px 4px;background:rgba(15,15,15,.96);border-bottom:1px solid rgba(255,255,255,.06);box-shadow:0 8px 14px rgba(0,0,0,.28);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .progress-step{min-width:0;padding:6px 2px;border-radius:8px;border:1px solid #252525;background:#121212;text-align:center}
+    .progress-num{display:block;font-size:8px;color:#606060}.progress-label{display:block;font-size:7px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;letter-spacing:.02em}
+    .progress-step.done{border-color:#174e3b;background:#0a1d16;color:var(--green)}
+    .progress-step.wait{border-color:#624417;background:#201708;color:var(--orange)}
+    .progress-step.stop{border-color:#6d2a2a;background:#230d0d;color:var(--red)}
+    .process-card{padding:10px;margin-bottom:7px}
+    .process-card.inactive-stage{opacity:.42}
+    .process-card.inactive-stage button{pointer-events:none}
+    .process-card.inactive-stage .no-setup-btn{pointer-events:auto}
+    .section-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px}
+    .section-index{width:22px;height:22px;display:grid;place-items:center;border-radius:7px;background:#252525;color:#aaa;font-size:10px;font-weight:850;flex:0 0 auto}
+    .section-copy{min-width:0}
+    .section-title{font-size:11px;font-weight:850;letter-spacing:.09em;text-transform:uppercase;line-height:1.2}
+    .section-sub{font-size:9px;color:#686868;line-height:1.35;margin-top:3px}
+    .question-list,.gate-list{display:grid;gap:6px}
+    .state-question,.gate-item{border:1px solid #2b2b2b;background:#111;border-radius:10px;padding:8px}
+    .state-question.invalid{border-color:#7e3232;background:var(--red-bg)}
+    .state-question.valid,.gate-item.valid{border-color:#1e654c;background:#0a1c15}
+    .gate-item.wait.invalid{border-color:#76501b;background:var(--orange-bg)}
+    .question-text,.gate-title{font-size:10.5px;font-weight:700;line-height:1.3;color:#dedede}
+    .gate-description{font-size:8.5px;line-height:1.35;color:#666;margin-top:3px}
+    .gate-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+    .gate-copy{min-width:0;flex:1}
+    .behavior-pill{font-size:7px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;padding:3px 5px;border-radius:5px;background:#242424;color:#777;white-space:nowrap}
+    .behavior-pill.wait{background:#322207;color:#d7a04a}
+    .binary-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:7px}
+    .choice-btn{min-height:34px;border:1px solid #303030;border-radius:8px;background:#181818;color:#777;font-size:9px;font-weight:850;cursor:pointer}
+    .choice-btn[aria-pressed="true"].healthy,.choice-btn[aria-pressed="true"].yes{border-color:#24785b;background:var(--green-bg);color:#68d6af}
+    .choice-btn[aria-pressed="true"].unhealthy,.choice-btn[aria-pressed="true"].no{border-color:#913838;background:var(--red-bg);color:#f08080}
+    .criteria-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+    .bonus-btn{width:100%;display:flex;align-items:center;gap:7px;min-height:40px;padding:7px 8px;border-radius:10px;border:1px solid #423a75;background:var(--violet-bg);text-align:left;cursor:pointer;min-width:0}
+    .bonus-btn[aria-pressed="true"]{border-color:#267758;background:#0a1d16}
+    .bonus-mark{width:22px;height:22px;border-radius:50%;border:1px solid #5b518f;display:grid;place-items:center;flex:0 0 auto;color:#a79af4;font-size:11px;font-weight:850}
+    .bonus-btn[aria-pressed="true"] .bonus-mark{border-color:#278663;background:#176347;color:#fff}
+    .bonus-title{min-width:0;font-size:10px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .subgroup{margin-top:9px}.subgroup:first-of-type{margin-top:0}
+    .subgroup-title,.entry-label{font-size:8px;font-weight:850;letter-spacing:.11em;text-transform:uppercase;color:#69727a;margin:0 0 6px 2px}
+    .no-setup-btn{width:100%;min-height:43px;margin-top:8px;border-radius:10px;border:1px solid #626262;background:#202020;color:#e4e4e4;font-size:10px;font-weight:850;letter-spacing:.05em;cursor:pointer}
+    .no-setup-btn[aria-pressed="true"]{background:#e3e3e3;color:#181818;border-color:#fff}
+    .entry-state{margin-top:10px;padding-top:9px;border-top:1px solid #242424}
+    .anti-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .anti-btn{min-height:40px;border-radius:9px;border:1px solid #303030;background:#111;color:#777;font-size:9.5px;font-weight:850;cursor:pointer}
+    .anti-btn.confirmed[aria-pressed="true"]{border-color:#227b5d;background:var(--green-bg);color:var(--green)}
+    .anti-btn.anticipate[aria-pressed="true"]{border-color:#9b3c3c;background:var(--red-bg);color:#ff8b8b}
+    .bonus-note{font-size:8.5px;color:#716c91;line-height:1.35;margin:8px 1px 0}
+    .incident-banner{border:1px solid #9a3939;background:#2a0e0e;border-radius:12px;padding:10px;margin:7px 0}
+    .incident-title{font-size:11px;font-weight:900;color:#ff8383;letter-spacing:.04em}
+    .incident-copy{font-size:9px;color:#bf7777;line-height:1.4;margin-top:4px}
+    .verdict-card{padding:11px 12px;margin:8px 0}
+    .verdict-card.nogo{border-color:#743030;background:#220d0d}.verdict-card.wait{border-color:#78521c;background:#211708}.verdict-card.conforme{border-color:#1c6a4e;background:#082017}.verdict-card.no_setup{border-color:#686868;background:#202020}
+    .verdict-card.premium{border-color:#237da0;background:var(--premium-bg);box-shadow:0 0 0 1px rgba(100,216,255,.08),0 0 24px rgba(40,169,218,.12)}
+    .verdict-card.premium .verdict-eyebrow,.verdict-card.premium .verdict-title{color:var(--premium)}
+    .verdict-eyebrow{font-size:9px;font-weight:850;letter-spacing:.11em;text-transform:uppercase;opacity:.7}
+    .verdict-title{font-size:16px;font-weight:880;margin-top:3px}.verdict-message{font-size:10.5px;line-height:1.4;margin-top:4px;color:#bbb}
+    .sticky{position:fixed;z-index:100;left:0;right:0;bottom:0;max-width:100vw;overflow:hidden;border-top:1px solid rgba(255,255,255,.1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);padding-bottom:env(safe-area-inset-bottom);transition:background .2s}
+    .sticky.nogo{background:rgba(37,12,12,.95)}.sticky.wait{background:rgba(39,27,8,.95)}.sticky.conforme{background:rgba(7,38,27,.95)}.sticky.premium{background:rgba(5,31,48,.96)}.sticky.no_setup{background:rgba(31,31,31,.96)}
+    .sticky-inner{width:100%;max-width:580px;min-width:0;margin:auto;display:flex;align-items:center;gap:7px;padding:10px 10px}
+    .status-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}.nogo .status-dot{background:var(--red)}.wait .status-dot{background:var(--orange)}.conforme .status-dot{background:var(--green)}.premium .status-dot{background:var(--premium);box-shadow:0 0 12px rgba(100,216,255,.7)}.no_setup .status-dot{background:#ddd}
+    .sticky-copy{flex:1;min-width:0}.sticky-title{font-size:11px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sticky-sub{font-size:8.5px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    .icon-btn{min-width:34px;height:36px;padding:0 7px;border-radius:9px;border:1px solid #3a3a3a;background:#191919;color:#888;font-size:13px;cursor:pointer;display:grid;place-items:center}
+    .icon-btn.reset{font-size:8px;font-weight:800;min-width:40px}
+    .sheet-overlay{position:fixed;z-index:180;inset:0;background:rgba(0,0,0,.72);opacity:0;pointer-events:none;transition:opacity .2s}
+    .sheet-overlay.open{opacity:1;pointer-events:auto}
+    .sheet{position:fixed;z-index:181;left:0;right:0;bottom:0;max-height:92vh;background:#191919;border:1px solid #333;border-bottom:0;border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .25s ease;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+    .sheet.open{transform:translateY(0)}
+    .sheet-handle{width:38px;height:4px;border-radius:3px;background:#444;margin:10px auto 4px;flex:0 0 auto}
+    .sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid #292929;flex:0 0 auto}
+    .sheet-title{font-size:14px;font-weight:850}.sheet-close{width:36px;height:36px;border:0;background:transparent;color:#777;font-size:20px;cursor:pointer}
+    .sheet-body{overflow:auto;overscroll-behavior:contain;padding:13px 14px 30px}
+    .cfg-group{margin-bottom:22px}.cfg-heading{font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:#777;padding-bottom:7px;margin:0 0 8px;border-bottom:1px solid #2b2b2b}
+    .cfg-help{font-size:9px;color:#5f5f5f;line-height:1.45;margin:-2px 0 9px}
+    .danger-btn,.secondary-btn{width:100%;min-height:41px;border-radius:10px;font-size:10px;font-weight:750;cursor:pointer}
+    .secondary-btn{border:1px solid #3a3a3a;background:#181818;color:#aaa;margin-bottom:7px}.danger-btn{border:1px solid #7b3030;background:#250e0e;color:#f08080;margin-top:7px}
+    .utility-card{border:1px solid #303030;background:#111;border-radius:11px;padding:10px;margin-bottom:8px}.utility-title{font-size:10px;font-weight:800;color:#ddd}.utility-copy{font-size:8.5px;color:#696969;line-height:1.45;margin:4px 0 9px}.utility-status{display:inline-flex;align-items:center;gap:5px;border:1px solid #3a3a3a;border-radius:999px;padding:4px 7px;margin-bottom:9px;color:#999;font-size:8px;font-weight:800}.utility-status.ready{border-color:#25694f;background:#0a2017;color:#66d3ac}.utility-status.warn{border-color:#76501b;background:#201708;color:#e1a84e}
+    .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #252525}.setting-copy{min-width:0}.setting-title{font-size:10px;color:#ddd}.setting-sub{font-size:8.5px;color:#666;margin-top:3px;line-height:1.35}
+    .switch{position:relative;width:44px;height:25px;flex:0 0 auto}.switch input{position:absolute;opacity:0}.switch-track{display:block;width:44px;height:25px;border-radius:14px;background:#333;border:1px solid #444;cursor:pointer}.switch input:checked+.switch-track{background:#176347;border-color:#298162}.switch-track:after{content:"";display:block;width:19px;height:19px;border-radius:50%;background:#aaa;margin:2px;transition:transform .15s}.switch input:checked+.switch-track:after{transform:translateX(19px);background:#fff}
+    .modal-overlay{position:fixed;z-index:240;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:18px}.modal-overlay.open{display:flex}.modal{width:min(100%,340px);background:#1a1a1a;border:1px solid #383838;border-radius:15px;padding:18px}.modal-title{font-size:15px;font-weight:850}.modal-text{font-size:11px;color:#888;line-height:1.5;margin:8px 0 18px}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.modal-actions button{min-height:41px;border-radius:9px;font-size:10px;font-weight:750;cursor:pointer}.cancel-btn{border:1px solid #383838;background:#111;color:#999}.confirm-btn{border:1px solid #8b3636;background:#2a0e0e;color:#f48a8a}.confirm-btn.neutral{border-color:#356a58;background:#0b241a;color:#76d8b6}
+    .toast{position:fixed;z-index:300;left:50%;bottom:108px;transform:translate(-50%,18px);max-width:calc(100% - 32px);background:#292929;border:1px solid #444;color:#eee;border-radius:10px;padding:9px 13px;font-size:10px;opacity:0;pointer-events:none;transition:.2s;text-align:center}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media (min-width:720px){
+      body{padding:24px 22px 104px}.app{max-width:1180px}.topbar{margin-bottom:12px}
+      #main-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+      .progress,.incident-banner,.verdict-card{grid-column:1/-1}.progress{top:0;margin:0 0 2px;padding:8px;border:1px solid #252525;border-radius:12px}
+      .process-card{margin:0;padding:14px}.section-head{margin-bottom:11px}.section-title{font-size:12px}.section-sub{font-size:9.5px}
+      .question-text,.gate-title{font-size:11px}.choice-btn{min-height:38px}
+      .sticky-inner{max-width:1180px;padding-left:22px;padding-right:22px}.sheet{left:50%;right:auto;width:min(720px,calc(100vw - 40px));transform:translate(-50%,105%)}.sheet.open{transform:translate(-50%,0)}
+    }
+    @media (min-width:1180px){#main-content{grid-template-columns:repeat(4,minmax(0,1fr))}.progress,.incident-banner,.verdict-card{grid-column:1/-1}.process-card{height:100%}.criteria-list{grid-template-columns:1fr}.gate-meta{align-items:flex-start}}
+    @media (max-width:370px){.objective{font-size:8px}.sticky-inner{gap:5px;padding-left:8px;padding-right:8px}.icon-btn{min-width:31px;padding:0 5px}.progress-label{font-size:6.5px}}
+    @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <header class="topbar">
+      <div class="brand">Pre-Trade Validator</div>
+      <div class="top-copy">
+        <div class="objective">OBJECTIF : 100 % DE TRADES CONFORMES — PAS LE PAYOUT</div>
+        <div class="phrase">PROCESSUS &gt; PNL · Processus, pas prédiction.</div>
+      </div>
+    </header>
+    <div class="timing" aria-label="Repères horaires ICT en heure de New York">
+      <span class="timing-clock" id="ny-clock">New York · —</span>
+      <span class="timing-market" id="timing-market">NQ · —</span>
+      <span class="timing-session" id="timing-session">—</span>
+      <span class="timing-next" id="timing-next">—</span>
+      <div class="timing-progress" id="timing-progress" hidden>
+        <progress id="session-progress" max="100" value="0" aria-label="Progression du créneau ICT en cours"></progress>
+        <div class="timing-progress-labels" aria-hidden="true"><span>Début</span><span>Milieu</span><span>Fin</span></div>
+      </div>
+      <span class="timing-note" id="timing-note">Horaires prévus NQ · Une fenêtre ICT favorable n’est pas un signal.</span>
+    </div>
+    <div id="main-content"></div>
+  </main>
+
+  <aside class="sticky" id="sticky" aria-live="polite">
+    <div class="sticky-inner">
+      <span class="status-dot" aria-hidden="true"></span>
+      <div class="sticky-copy"><div class="sticky-title" id="sticky-title"></div><div class="sticky-sub" id="sticky-sub"></div></div>
+      <button class="icon-btn" type="button" id="config-open" aria-label="Réglages" title="Réglages">⚙</button>
+      <button class="icon-btn reset" type="button" id="reset-current" aria-label="Nouvelle session">Reset</button>
+    </div>
+  </aside>
+
+  <div class="sheet-overlay" id="sheet-overlay"></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><div class="sheet-title" id="sheet-title"></div><button class="sheet-close" id="sheet-close" type="button" aria-label="Fermer">×</button></div>
+    <div class="sheet-body" id="sheet-body"></div>
+  </section>
+
+  <div class="modal-overlay" id="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal">
+      <div class="modal-title" id="confirm-title"></div>
+      <div class="modal-text" id="confirm-text"></div>
+      <div class="modal-actions"><button class="cancel-btn" id="confirm-cancel" type="button">Annuler</button><button class="confirm-btn" id="confirm-ok" type="button">Confirmer</button></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  "use strict";
+
+  const STORAGE_KEY = "ptv_v7";
+  const V6_KEY = "ptv_v6";
+  const V5_KEY = "ptv_v5";
+  const V4_KEY = "ptv_v4";
+  const V3_KEY = "ptv_v3";
+  const V2_KEY = "ptv_v2";
+  const V1_KEY = "ptv_v1";
+  const BACKUP_FORMAT = "pre-trade-validator-backup";
+  const BACKUP_FORMAT_VERSION = 1;
+  const MAX_BACKUP_BYTES = 8 * 1024 * 1024;
+  const INCIDENT_TYPES = ["fomo","anticipation","money","clarity"];
+  const INCIDENT_STATUSES = ["active","reevaluated","input_error","abandoned"];
+  const STATE_QUESTIONS = [
+    {id:"moneyTarget",text:"Je cherche à récupérer une perte ou atteindre un montant ?",healthy:"no",healthyFirst:true,cause:"Recherche de récupération / montant",incidentType:"money"},
+    {id:"clearMind",text:"Je suis calme et lucide ?",healthy:"yes",healthyFirst:true,cause:"Manque de clarté mentale",incidentType:"clarity"},
+    {id:"acceptsZero",text:"J’accepte réellement de terminer sans trade ?",healthy:"yes",healthyFirst:true,cause:"0 trade non accepté",incidentType:"clarity"}
+  ];
+  const DEFAULT_CRITERIA = [
+    {id:"c_setup_context",shortTitle:"Narrative + DOL clairs",description:"Le scénario, sa cible et sa fenêtre de temps sont définis avant de chercher une entrée.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
+    {id:"c_htf_zone",shortTitle:"Prix dans mon POI",description:"Le prix traite dans la zone de travail prévue par le scénario.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
+    {id:"c_setup_liquidity",shortTitle:"CSD conforme à mon modèle",description:"Le changement d’orderflow attendu par mon modèle est présent : c’est le setup.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
+    {id:"c_smt",shortTitle:"SMT présent",description:"Confluence facultative, sans effet sur l’autorisation.",section:"setup",subgroup:"confluence",type:"boolean",behavior:"bonus",systemRole:"bonus"}
+  ];
+  const DEFAULT_SETTINGS = {haptics:true,anticipationEffect:"block"};
+  // Créneaux de référence en heure locale de New York, indépendants du verdict.
+  const TIMING_SESSIONS = [
+    {name:"Asie",start:20*60,end:24*60,days:[0,1,2,3,4]},
+    {name:"Londres",start:2*60,end:5*60,days:[1,2,3,4,5]},
+    {name:"New York matin",start:7*60,end:10*60,days:[1,2,3,4,5]},
+    {name:"New York après-midi",start:13*60+30,end:16*60,days:[1,2,3,4,5]}
+  ];
+  const NY_FORMATTER = new Intl.DateTimeFormat("en-GB",{
+    timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"
+  });
+  // Heures de New York (ET). Ne pas utiliser le calendrier des actions Nasdaq pour les futures NQ.
+  // Sources : https://www.cmegroup.com/trading-hours.html
+  // https://support.ninjatrader.com/s/article/2026-Holiday-Trading-Hours?language=en_US
+  // Calendrier consulté le 25/10/2026 ; à actualiser si les horaires publiés changent.
+  const NQ_CALENDAR = {
+    from:"2026-01-01",through:"2027-01-03",
+    exceptions:{
+      "2026-01-01":{name:"Nouvel An",hours:[[1080,1440]]},
+      "2026-01-19":{name:"Martin Luther King Day",hours:[[0,780],[1080,1440]]},
+      "2026-02-16":{name:"Presidents Day",hours:[[0,780],[1080,1440]]},
+      "2026-04-03":{name:"Vendredi saint",hours:[[0,555]]},
+      "2026-05-25":{name:"Memorial Day",hours:[[0,780],[1080,1440]]},
+      "2026-06-19":{name:"Juneteenth",hours:[[0,780]]},
+      "2026-07-03":{name:"Independence Day observé",hours:[[0,780]]},
+      "2026-09-07":{name:"Labor Day",hours:[[0,780],[1080,1440]]},
+      "2026-11-26":{name:"Thanksgiving",hours:[[0,780],[1080,1440]]},
+      "2026-11-27":{name:"Lendemain de Thanksgiving",hours:[[0,795]]},
+      "2026-12-24":{name:"Veille de Noël",hours:[[0,795]]},
+      "2026-12-25":{name:"Noël",hours:[]},
+      "2026-12-31":{name:"Veille du Nouvel An",hours:[[0,975],[990,1020]]},
+      "2027-01-01":{name:"Nouvel An",hours:[]}
+    }
+  };
+
+  let app;
+  let saveTimer = null;
+  let toastTimer = null;
+  let confirmCallback = null;
+  let activeSheet = null;
+  let deferredInstallPrompt = null;
+
+  function clone(value){return JSON.parse(JSON.stringify(value));}
+  function newYorkParts(date){
+    const parts={};
+    NY_FORMATTER.formatToParts(date).forEach(part=>{if(part.type!=="literal")parts[part.type]=Number(part.value);});
+    return parts;
+  }
+  function newYorkInstant(year,month,day,minutes){
+    const target=Date.UTC(year,month-1,day,0,minutes);
+    let instant=target;
+    // Corriger le décalage à la date cible pour suivre l’heure d’été américaine.
+    for(let i=0;i<3;i++){
+      const p=newYorkParts(new Date(instant));
+      const correction=target-Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second);
+      instant+=correction;
+      if(!correction)break;
+    }
+    return instant;
+  }
+  function marketDay(date){
+    const key=date.toISOString().slice(0,10),day=date.getUTCDay();
+    const covered=key>=NQ_CALENDAR.from&&key<=NQ_CALENDAR.through;
+    const exception=covered?NQ_CALENDAR.exceptions[key]:null;
+    const regular=day===6?[]:day===0?[[1080,1440]]:day===5?[[0,975],[990,1020]]:[[0,975],[990,1020],[1080,1440]];
+    return {covered:covered,holiday:exception?exception.name:null,hours:exception?exception.hours:regular};
+  }
+  function getTiming(now=new Date()){
+    const p=newYorkParts(now),today=new Date(Date.UTC(p.year,p.month-1,p.day));
+    const minutes=p.hour*60+p.minute+p.second/60,market=marketDay(today);
+    market.open=market.covered?market.hours.some(([start,end])=>minutes>=start&&minutes<end):null;
+    let current=null,next=null;
+    for(let offset=0;offset<=10;offset++){
+      const date=new Date(Date.UTC(p.year,p.month-1,p.day+offset)),schedule=marketDay(date);
+      if(!schedule.covered)continue;
+      TIMING_SESSIONS.forEach(session=>{
+        if(!session.days.includes(date.getUTCDay()))return;
+        schedule.hours.forEach(([open,close])=>{
+          const start=Math.max(session.start,open),end=Math.min(session.end,close);
+          if(start>=end)return;
+          const at=newYorkInstant(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate(),start);
+          if(offset===0&&minutes>=start&&minutes<end)current={name:session.name,start:start,end:end};
+          if(at>now.getTime()&&(!next||at<next.at))next={name:session.name,at:at,start:start};
+        });
+      });
+    }
+    const progress=current?Math.max(0,Math.min(100,(minutes-current.start)/(current.end-current.start)*100)):null;
+    return {parts:p,current:current,next:next,progress:progress,market:market};
+  }
+  function updateTiming(){
+    const now=new Date(),timing=getTiming(now),pad=value=>String(value).padStart(2,"0");
+    document.getElementById("ny-clock").textContent="New York · "+pad(timing.parts.hour)+":"+pad(timing.parts.minute);
+    document.getElementById("timing-market").textContent=timing.market.open===null?"NQ · calendrier à actualiser":"NQ · "+(timing.market.open?"ouvert":"fermé")+" (horaire prévu)"+(timing.market.holiday?" · "+timing.market.holiday:"");
+    document.getElementById("timing-session").textContent=timing.current?"Créneau ICT · "+timing.current.name:timing.market.covered?"Aucun créneau ICT actif":"Créneau ICT · calendrier non couvert";
+    document.getElementById("timing-note").textContent="Heure de New York · Calendrier NQ 2026 / Nouvel An 2027 · Hors interruptions exceptionnelles. Une fenêtre ICT favorable n’est pas un signal.";
+    document.getElementById("timing-progress").hidden=!timing.current;
+    const progress=document.getElementById("session-progress");
+    progress.value=timing.progress===null?0:timing.progress;
+    if(timing.current)progress.setAttribute("aria-label","Progression du créneau ICT "+timing.current.name);
+    const next=timing.next;
+    if(!next){document.getElementById("timing-next").textContent="Prochain créneau · calendrier à actualiser";return;}
+    const remaining=Math.ceil((next.at-now.getTime())/60000),hours=Math.floor(remaining/60),minutes=remaining%60;
+    const duration=hours?hours+" h "+pad(minutes)+" min":minutes+" min";
+    document.getElementById("timing-next").textContent="Prochain · "+next.name+" dans "+duration+" ("+pad(Math.floor(next.start/60))+":"+pad(next.start%60)+" NY)";
+  }
+  function isPlainObject(value){return value!==null&&typeof value==="object"&&!Array.isArray(value);}
+  function safeText(value,max,fallback){
+    const text=typeof value==="string"?value.trim():"";
+    return (text||(fallback||"")).slice(0,max);
+  }
+  function safeId(value,prefix,index){
+    let base=typeof value==="string"?value.replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,64):"";
+    if(["__proto__","prototype","constructor"].includes(base))base=(prefix||"id")+"_"+base;
+    return base||(prefix||"id")+"_"+(index||0);
+  }
+  function isoNow(){return new Date().toISOString();}
+  function sessionId(){return "s_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,9);}
+  function uniqueId(prefix){
+    app.nextId=(Number(app.nextId)||1000)+1;
+    return prefix+"_"+Date.now().toString(36)+"_"+app.nextId.toString(36);
+  }
+  function normalizeAnswer(value){
+    if(value==="yes"||value===true||value===1||value==="1")return "yes";
+    if(value==="no")return "no";
+    return null;
+  }
+  function normalizeCriterionState(value,behavior){
+    if(behavior==="bonus")return value===true||value===1||value==="yes"||value==="confirmed"?1:0;
+    return normalizeAnswer(value);
+  }
+  function blankSetup(note){
+    return {
+      sessionId:sessionId(),startedAt:isoNow(),note:safeText(note,8000,""),
+      traderState:{moneyTarget:null,clearMind:null,acceptsZero:null},
+      noSetup:false,criterionStates:{},
+      entryState:null,incidentIds:[]
+    };
+  }
+  function makeFreshApp(){
+    const id="i_0_nq";
+    const data={
+      version:7,nextId:1000,instruments:[{id:id,name:"NQ"}],currentId:id,
+      criteria:clone(DEFAULT_CRITERIA),
+      settings:clone(DEFAULT_SETTINGS),setups:{},incidents:[]
+    };
+    data.setups[id]=blankSetup("");
+    return data;
+  }
+  function normalizeIncident(raw,index){
+    return {
+      id:safeId(raw&&raw.id,"inc",index),sessionId:safeText(raw&&raw.sessionId,100,""),
+      instrumentId:safeText(raw&&raw.instrumentId,80,"i_0_nq"),instrumentName:"NQ",
+      type:INCIDENT_TYPES.includes(raw&&raw.type)?raw.type:"fomo",
+      sources:Array.isArray(raw&&raw.sources)?raw.sources.filter(v=>v==="reason"||v==="entry"||v==="state").slice(0,3):[],
+      createdAt:safeText(raw&&raw.createdAt,40,isoNow()),
+      status:INCIDENT_STATUSES.includes(raw&&raw.status)?raw.status:"active",
+      resolvedAt:safeText(raw&&raw.resolvedAt,40,"")||null
+    };
+  }
+  function normalizeSetup(raw,data){
+    const setup=blankSetup(raw&&raw.note);
+    setup.sessionId=safeText(raw&&raw.sessionId,100,setup.sessionId);
+    setup.startedAt=safeText(raw&&raw.startedAt,40,setup.startedAt);
+    STATE_QUESTIONS.forEach(q=>setup.traderState[q.id]=normalizeAnswer(raw&&raw.traderState&&raw.traderState[q.id]));
+    setup.noSetup=!!(raw&&raw.noSetup);
+    const rawStates=raw&&raw.criterionStates&&typeof raw.criterionStates==="object"?raw.criterionStates:{};
+    data.criteria.forEach(c=>setup.criterionStates[c.id]=normalizeCriterionState(rawStates[c.id],c.behavior));
+    setup.entryState=raw&&["confirmed","anticipate"].includes(raw.entryState)?raw.entryState:null;
+    setup.incidentIds=Array.isArray(raw&&raw.incidentIds)?raw.incidentIds.map(v=>safeText(v,80,"")).filter(Boolean).slice(0,200):[];
+    return setup;
+  }
+  function normalizeApp(raw){
+    const data=makeFreshApp();
+    const parsedNextId=Number(raw&&raw.nextId);
+    data.nextId=Number.isSafeInteger(parsedNextId)?Math.max(1000,parsedNextId):1000;
+    const rawInstruments=Array.isArray(raw&&raw.instruments)?raw.instruments:[];
+    const rawNq=rawInstruments.find(i=>String(i&&i.name||"").trim().toUpperCase()==="NQ");
+    const nqId=safeId(rawNq&&rawNq.id,"i",0);
+    data.instruments=[{id:nqId,name:"NQ"}];data.currentId=nqId;
+
+    const rawSettings=isPlainObject(raw&&raw.settings)?raw.settings:{};
+    data.settings={
+      haptics:typeof rawSettings.haptics==="boolean"?rawSettings.haptics:DEFAULT_SETTINGS.haptics,
+      anticipationEffect:["wait","block"].includes(rawSettings.anticipationEffect)?rawSettings.anticipationEffect:"block"
+    };
+
+    const rawSetups=raw&&raw.setups&&typeof raw.setups==="object"?raw.setups:{};
+    const rawSetup=rawSetups[nqId]||(rawNq&&rawSetups[rawNq.id])||raw&&raw.setup||null;
+    data.setups={};data.setups[nqId]=normalizeSetup(rawSetup,data);
+    data.incidents=Array.isArray(raw&&raw.incidents)?raw.incidents.slice(0,2000).map(normalizeIncident):[];
+    data.incidents=data.incidents.filter((item,index,array)=>array.findIndex(v=>v.id===item.id)===index);
+    data.incidents.forEach(incident=>{
+      if(incident.status!=="active"||!(["anticipation","money"].includes(incident.type)))return;
+      incident.sources=incident.sources.filter(source=>source!=="reason");
+      if(!incident.sources.length){incident.status="input_error";incident.resolvedAt=isoNow();}
+    });
+    const validIncidentIds=new Set(data.incidents.map(i=>i.id));
+    data.setups[nqId].incidentIds=data.setups[nqId].incidentIds.filter(id=>validIncidentIds.has(id));
+    data.version=7;
+    return data;
+  }
+
+  function migrateV6ToV7(old){
+    const rawSetups=old&&old.setups&&typeof old.setups==="object"?old.setups:{},oldSetup=Object.values(rawSetups)[0]||old&&old.setup||null;
+    const data=normalizeApp(old),setup=data.setups[data.currentId];
+    setup.traderState.clearMind=null;
+    if(oldSetup&&oldSetup.signature&&oldSetup.signature.confirmed)setup.criterionStates.c_setup_liquidity="yes";
+    else setup.criterionStates.c_setup_liquidity=null;
+    data.version=7;return data;
+  }
+
+  function migrateV5ToV6(old){
+    const data=normalizeApp(old),rawSetups=old&&old.setups&&typeof old.setups==="object"?old.setups:{},oldNq=Object.values(rawSetups)[0]||old&&old.setup||null;
+    const oldStates=oldNq&&oldNq.criterionStates||{},setup=data.setups[data.currentId];
+    if(oldStates.c_htf_bias==="no"||oldStates.c_htf_dol==="no")setup.criterionStates.c_setup_context="no";
+    else if(oldStates.c_htf_bias==="yes"&&oldStates.c_htf_dol==="yes")setup.criterionStates.c_setup_context="yes";
+    return data;
+  }
+
+  function migrateV4ToV5(old){
+    const data=makeFreshApp();
+    const instruments=Array.isArray(old&&old.instruments)?old.instruments:[];
+    const nq=instruments.find(i=>String(i&&i.name||"").trim().toUpperCase()==="NQ")||instruments[0];
+    const oldId=nq&&nq.id;
+    const oldSetup=old&&old.setups&&oldId?old.setups[oldId]:null;
+    const currentId=data.currentId;
+    data.nextId=Math.max(1000,Number(old&&old.nextId)||1000);
+    data.setups[currentId]=blankSetup(oldSetup&&oldSetup.note);
+    data.settings.haptics=old&&old.settings&&typeof old.settings.haptics==="boolean"?old.settings.haptics:true;
+    data.settings.anticipationEffect=old&&old.settings&&["wait","block"].includes(old.settings.antiEffect)?old.settings.antiEffect:"block";
+
+    const states=oldSetup&&oldSetup.criterionStates||{};
+    const newSetup=data.setups[currentId];
+    if(Number(states.c_htf_prior)>0&&Number(states.c_htf_draw)>0)newSetup.criterionStates.c_setup_context="yes";
+    if(Number(states.c_htf_confirm)>0)newSetup.criterionStates.c_htf_zone="yes";
+    if(Number(states.c_smt)>0)newSetup.criterionStates.c_smt=1;
+    // Seuls ces deux critères actuels pouvaient aussi exister comme critères personnalisés en v4.
+    const oldCriteria=Array.isArray(old&&old.criteria)?old.criteria:[];
+    ["c_setup_context","c_setup_liquidity"].forEach(id=>{
+      if(oldCriteria.some((item,index)=>safeId(item&&item.id,"c",index)===id)){
+        newSetup.criterionStates[id]=normalizeAnswer(states[id]);
+      }
+    });
+
+    return normalizeApp(data);
+  }
+  function migrateLegacyToV5(old){
+    if(old&&Array.isArray(old.instruments))return migrateV4ToV5(old);
+    const data=makeFreshApp();
+    const notes=old&&old.notes&&typeof old.notes==="object"?old.notes:{};
+    data.setups[data.currentId].note=safeText(notes.NQ||notes.nq,8000,"");
+    return normalizeApp(data);
+  }
+  function loadApp(){
+    let stored=null,v6=null,v5=null,v4=null,v3=null,v2=null,v1=null;
+    try{
+      stored=localStorage.getItem(STORAGE_KEY);v6=localStorage.getItem(V6_KEY);v5=localStorage.getItem(V5_KEY);v4=localStorage.getItem(V4_KEY);
+      v3=localStorage.getItem(V3_KEY);v2=localStorage.getItem(V2_KEY);v1=localStorage.getItem(V1_KEY);
+    }catch(error){console.warn("Stockage local indisponible",error);app=makeFreshApp();return;}
+    if(stored){try{app=normalizeApp(JSON.parse(stored));saveNow();return;}catch(error){console.warn("Données ptv_v7 illisibles",error);}}
+    if(v6){try{app=migrateV6ToV7(JSON.parse(v6));saveNow();return;}catch(error){console.warn("Migration ptv_v6 impossible",error);}}
+    if(v5){try{app=migrateV5ToV6(JSON.parse(v5));saveNow();return;}catch(error){console.warn("Migration ptv_v5 impossible",error);}}
+    if(v4){try{app=migrateV4ToV5(JSON.parse(v4));saveNow();return;}catch(error){console.warn("Migration ptv_v4 impossible",error);}}
+    for(const pair of [[V3_KEY,v3],[V2_KEY,v2],[V1_KEY,v1]]){
+      if(!pair[1])continue;
+      try{app=migrateLegacyToV5(JSON.parse(pair[1]));saveNow();return;}catch(error){console.warn("Migration "+pair[0]+" impossible",error);}
+    }
+    app=makeFreshApp();
+  }
+  function saveNow(){
+    if(!app)return false;
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(app));return true;}
+    catch(error){console.warn("Impossible de sauvegarder les données locales",error);showToast("Sauvegarde locale indisponible");return false;}
+  }
+  function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,120);}
+  function setupFor(){if(!app.setups[app.currentId])app.setups[app.currentId]=blankSetup("");return app.setups[app.currentId];}
+  function orderedCriteria(section,subgroup){
+    return app.criteria.filter(c=>c.section===section&&(subgroup===undefined||c.subgroup===subgroup));
+  }
+  function activeIncidents(setup){
+    const s=setup||setupFor();const ids=new Set(s.incidentIds||[]);
+    return app.incidents.filter(i=>ids.has(i.id)&&i.sessionId===s.sessionId&&i.status==="active");
+  }
+  function incidentLabel(type){return {fomo:"FOMO",anticipation:"Anticipation",money:"Récupération / montant",clarity:"Clarté mentale insuffisante"}[type]||"Impulsivité";}
+  function criterionProblem(criterion,setup,rank){
+    if(setup.criterionStates[criterion.id]==="yes")return null;
+    return {severity:"wait",rank:rank,code:"criterion:"+criterion.id,title:criterion.shortTitle,message:criterion.shortTitle};
+  }
+  function makeVerdict(type,cause,problems){
+    if(type==="nogo")return {type:"nogo",title:"NO GO",stickyTitle:"NO GO",message:cause.message,cause:cause,missing:(problems||[]).map(p=>p.title)};
+    if(type==="wait")return {type:"wait",title:"WAIT",stickyTitle:"WAIT",message:cause.message,cause:cause,missing:(problems||[]).map(p=>p.title)};
+    if(type==="no_setup")return {type:"no_setup",title:"PAS DE SETUP — PAS DE TRADE",stickyTitle:"PAS DE TRADE",message:"Processus respecté.",cause:null,missing:[]};
+    if(type==="premium")return {type:"premium",title:"PROCESSUS CONFORME + SMT",stickyTitle:"CONFORME + SMT",message:"Confluence SMT présente. Le scénario est renforcé, sans garantie sur le résultat.",cause:null,missing:[]};
+    return {type:"conforme",title:"PROCESSUS CONFORME",stickyTitle:"CONFORME",message:"Toutes les conditions prévues sont présentes. Le processus autorise une exécution selon le plan. Cela ne prédit pas le résultat du trade.",cause:null,missing:[]};
+  }
+  function getVerdict(setupArg){
+    const setup=setupArg&&typeof setupArg==="object"?setupArg:setupFor();
+    if(setup.noSetup)return makeVerdict("no_setup",null,[]);
+    const problems=[];let rank=0;
+    const push=(severity,code,title,message)=>problems.push({severity:severity,rank:rank++,code:code,title:title,message:message||title});
+
+    activeIncidents(setup).forEach(incident=>{
+      const severity=incident.type==="anticipation"&&app.settings.anticipationEffect==="wait"?"wait":"block";
+      push(severity,"incident:"+incident.type,"Impulsivité détectée","Impulsivité détectée : "+incidentLabel(incident.type));
+    });
+    STATE_QUESTIONS.forEach(question=>{
+      const value=setup.traderState[question.id];
+      if(value&&value!==question.healthy)push("block","state:"+question.id,question.cause,question.cause);
+      else if(!value)push("wait","state:"+question.id,"État du trader","Répondre à l’état du trader");
+    });
+    orderedCriteria("setup","gate").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
+    if(!setup.entryState)push("wait","entry:state","Exécution","Confirmer l’exécution du plan");
+    else if(setup.entryState==="anticipate")push("block","entry:anticipate","Anticipation","Ne pas anticiper le plan");
+
+    const blocks=problems.filter(p=>p.severity==="block").sort((a,b)=>a.rank-b.rank);
+    const waits=problems.filter(p=>p.severity==="wait").sort((a,b)=>a.rank-b.rank);
+    if(blocks.length)return makeVerdict("nogo",blocks[0],problems);
+    if(waits.length)return makeVerdict("wait",waits[0],problems);
+    if(setup.criterionStates.c_smt)return makeVerdict("premium",null,[]);
+    return makeVerdict("conforme",null,[]);
+  }
+  function stageStatus(stage,setup){
+    if(setup.noSetup)return "done";
+    if(stage==="state"){
+      if(activeIncidents(setup).some(i=>i.type!=="anticipation"||app.settings.anticipationEffect==="block"))return "stop";
+      if(STATE_QUESTIONS.some(q=>setup.traderState[q.id]&&setup.traderState[q.id]!==q.healthy))return "stop";
+      if(activeIncidents(setup).length||STATE_QUESTIONS.some(q=>!setup.traderState[q.id]))return "wait";
+      return "done";
+    }
+    if(stage==="setup"){
+      const criteria=orderedCriteria("setup","gate");
+      const problems=criteria.map((c,i)=>criterionProblem(c,setup,i)).filter(Boolean);
+      if(problems.some(p=>p.severity==="block"))return "stop";
+      return problems.length?"wait":"done";
+    }
+    if(stage==="entry"){
+      if(setup.entryState==="anticipate")return "stop";
+      if(!setup.entryState)return "wait";
+      return "done";
+    }
+    return "wait";
+  }
+
+  function node(tag,className,text){
+    const item=document.createElement(tag);
+    if(className)item.className=className;
+    if(text!==undefined)item.textContent=text;
+    return item;
+  }
+  function makeButton(className,text,label){
+    const item=node("button",className,text);item.type="button";
+    if(label)item.setAttribute("aria-label",label);
+    return item;
+  }
+  function setAction(element,action,id){
+    element.dataset.action=action;
+    if(id!==undefined)element.dataset.id=id;
+    return element;
+  }
+  function haptic(pattern){
+    if(app.settings.haptics&&navigator.vibrate){try{navigator.vibrate(pattern||10);}catch(_){}}
+  }
+  function showToast(message){
+    const toast=document.getElementById("toast");toast.textContent=message;toast.classList.add("show");
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),2200);
+  }
+  function sectionHead(index,title,subtitle){
+    const head=node("div","section-head");head.append(node("div","section-index",String(index)));
+    const copy=node("div","section-copy");copy.append(node("div","section-title",index+" — "+title));
+    if(subtitle)copy.append(node("div","section-sub",subtitle));
+    head.append(copy);return head;
+  }
+  function renderProgress(container,setup){
+    const progress=node("div","progress");progress.setAttribute("aria-label","Progression du processus");
+    const items=[
+      {n:"0",label:"ÉTAT",status:stageStatus("state",setup)},
+      {n:"1",label:"SETUP",status:stageStatus("setup",setup)},
+      {n:"2",label:"EXÉCUTION",status:stageStatus("entry",setup)}
+    ];
+    items.forEach(item=>{
+      const box=node("div","progress-step "+item.status);
+      box.append(node("span","progress-num",item.n+" · "+(item.status==="done"?"✓":item.status==="stop"?"×":"…")),node("span","progress-label",item.label));
+      progress.append(box);
+    });
+    container.append(progress);
+  }
+  function renderIncidentBanner(container,setup){
+    const incidents=activeIncidents(setup);
+    if(!incidents.length)return;
+    const banner=node("section","incident-banner");
+    banner.append(node("div","incident-title","⚠ NO GO VERROUILLÉ POUR CETTE SESSION"));
+    banner.append(node("div","incident-copy",incidents.map(i=>incidentLabel(i.type)).join(" · ")+" — quitte les charts puis utilise Reset pour démarrer une nouvelle session."));
+    container.append(banner);
+  }
+  function renderStateStage(container,setup){
+    const card=node("section","process-card"+(setup.noSetup?" inactive-stage":""));
+    card.append(sectionHead(0,"ÉTAT","Est-ce que j’exécute un plan ou est-ce que je cherche un résultat ?"));
+    const list=node("div","question-list");
+    STATE_QUESTIONS.forEach(question=>{
+      const value=setup.traderState[question.id];
+      const validity=value?(value===question.healthy?" valid":" invalid"):"";
+      const row=node("div","state-question"+validity);row.append(node("div","question-text",question.text));
+      const choices=node("div","binary-choice");
+      const order=question.healthyFirst?[question.healthy,question.healthy==="yes"?"no":"yes"]:["yes","no"];
+      order.forEach(answer=>{
+        const healthy=answer===question.healthy;
+        const button=setAction(makeButton("choice-btn "+(healthy?"healthy":"unhealthy"),answer==="yes"?"OUI":"NON"),"state-answer",question.id);
+        button.dataset.value=answer;button.setAttribute("aria-pressed",String(value===answer));choices.append(button);
+      });
+      row.append(choices);list.append(row);
+    });
+    card.append(list);container.append(card);
+  }
+  function renderCriterion(criterion,setup){
+    const state=setup.criterionStates[criterion.id];
+    if(criterion.behavior==="bonus"){
+      const selected=!!state;
+      const button=setAction(makeButton("bonus-btn","",criterion.shortTitle+" — "+criterion.description),"criterion-toggle",criterion.id);
+      button.setAttribute("aria-pressed",String(selected));button.title=criterion.description||"";
+      button.append(node("span","bonus-mark",selected?"✓":"+"),node("span","bonus-title",criterion.shortTitle));
+      return button;
+    }
+    const passed=state==="yes";
+    const explicitNo=state==="no";
+    const cls=passed?" valid":explicitNo?" invalid":"";
+    const row=node("div","gate-item "+criterion.behavior+cls);
+    const meta=node("div","gate-meta");const copy=node("div","gate-copy");
+    copy.append(node("div","gate-title",criterion.shortTitle));
+    if(criterion.description)copy.append(node("div","gate-description",criterion.description));
+    if(criterion.description)row.title=criterion.description;
+    meta.append(copy,node("span","behavior-pill "+criterion.behavior,"Attente"));row.append(meta);
+    const choices=node("div","binary-choice");
+    [["yes","OUI","yes"],["no","NON","no"]].forEach(item=>{
+      const button=setAction(makeButton("choice-btn "+item[2],item[1]),"criterion-answer",criterion.id);
+      button.dataset.value=item[0];button.setAttribute("aria-pressed",String(state===item[0]));choices.append(button);
+    });
+    row.append(choices);return row;
+  }
+  function renderSetupStage(container,setup){
+    const card=node("section","process-card"+(setup.noSetup?" inactive-stage":""));
+    card.append(sectionHead(1,"SETUP","Trois vérifications rapides avant toute exécution."));
+    const gates=orderedCriteria("setup","gate");
+    if(gates.length){
+      const wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Validation du trade"));
+      const list=node("div","gate-list");gates.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);card.append(wrap);
+    }
+    const confluences=orderedCriteria("setup","confluence");
+    if(confluences.length){
+      const wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Confluences facultatives"));
+      const list=node("div","criteria-list");confluences.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);card.append(wrap);
+    }
+    const noSetup=setAction(makeButton("no-setup-btn","PAS DE SETUP"),"no-setup");
+    noSetup.setAttribute("aria-pressed",String(setup.noSetup));card.append(noSetup);
+    container.append(card);
+  }
+  function renderEntryStage(container,setup){
+    const card=node("section","process-card"+(setup.noSetup?" inactive-stage":""));
+    card.append(sectionHead(2,"EXÉCUTION","Une seule vérification : suivre le plan, sans négocier avec soi-même."));
+    const entry=node("div","entry-state");entry.append(node("div","entry-label","J’exécute mon plan sans anticiper."));
+    const grid=node("div","anti-grid");
+    [["confirmed","OUI","confirmed"],["anticipate","NON","anticipate"]].forEach(item=>{
+      const button=setAction(makeButton("anti-btn "+item[2],item[1]),"entry-state",item[0]);
+      button.setAttribute("aria-pressed",String(setup.entryState===item[0]));grid.append(button);
+    });
+    entry.append(grid);card.append(entry,node("div","bonus-note","Le SMT est facultatif : il enrichit le verdict sans autoriser un setup incomplet."));
+    container.append(card);
+  }
+  function verdictIcon(type){return {nogo:"🔴",wait:"🟠",conforme:"🟢",premium:"🔵",no_setup:"⚪"}[type]||"•";}
+  function renderVerdictCard(container,verdict){
+    const card=node("section","verdict-card "+verdict.type);card.setAttribute("aria-live","polite");
+    card.append(node("div","verdict-eyebrow","Verdict"),node("div","verdict-title",verdictIcon(verdict.type)+" "+verdict.title),node("div","verdict-message",verdict.message));
+    container.append(card);
+  }
+  function renderSticky(verdict){
+    const sticky=document.getElementById("sticky");sticky.className="sticky "+verdict.type;
+    let title="NQ · "+verdict.stickyTitle;
+    if((verdict.type==="nogo"||verdict.type==="wait")&&verdict.cause)title+=" — "+verdict.cause.message;
+    document.getElementById("sticky-title").textContent=title;
+    document.getElementById("sticky-sub").textContent=verdict.type==="conforme"?"Processus conforme, résultat non prédit.":verdict.message;
+  }
+  function render(){
+    const container=document.getElementById("main-content"),setup=setupFor(),verdict=getVerdict(setup),frag=document.createDocumentFragment();
+    renderProgress(frag,setup);renderIncidentBanner(frag,setup);renderStateStage(frag,setup);
+    renderSetupStage(frag,setup);renderEntryStage(frag,setup);renderVerdictCard(frag,verdict);
+    container.replaceChildren(frag);renderSticky(verdict);
+  }
+
+  function triggerIncident(type,source){
+    const setup=setupFor();
+    let incident=activeIncidents(setup).find(i=>i.type===type);
+    if(incident){
+      if(!incident.sources.includes(source))incident.sources.push(source);
+      return incident;
+    }
+    incident={
+      id:uniqueId("inc"),sessionId:setup.sessionId,instrumentId:app.currentId,instrumentName:"NQ",
+      type:type,sources:[source],createdAt:isoNow(),status:"active",resolvedAt:null
+    };
+    app.incidents.push(incident);setup.incidentIds.push(incident.id);return incident;
+  }
+  function setStateAnswer(id,value){
+    const question=STATE_QUESTIONS.find(q=>q.id===id);if(!question||!["yes","no"].includes(value)||setupFor().noSetup)return;
+    const setup=setupFor(),next=setup.traderState[id]===value?null:value;
+    setup.traderState[id]=next;
+    if(next&&next!==question.healthy)triggerIncident(question.incidentType||"clarity","state");
+    scheduleSave();render();haptic(next===null?6:next===question.healthy?8:[18,25,18]);
+  }
+  function setCriterionAnswer(id,value){
+    const criterion=app.criteria.find(c=>c.id===id);if(!criterion||setupFor().noSetup)return;
+    const allowed=["yes","no"];
+    if(!allowed.includes(value))return;
+    const setup=setupFor(),next=setup.criterionStates[id]===value?null:value;
+    setup.criterionStates[id]=next;scheduleSave();render();haptic(next===null?6:next==="no"?[15,22,15]:8);
+  }
+  function toggleCriterion(id){
+    const criterion=app.criteria.find(c=>c.id===id);if(!criterion||setupFor().noSetup)return;
+    setupFor().criterionStates[id]=setupFor().criterionStates[id]?0:1;scheduleSave();render();haptic(8);
+  }
+  function chooseNoSetup(){
+    const setup=setupFor();
+    if(setup.noSetup){
+      setup.noSetup=false;scheduleSave();render();haptic(6);showToast("Choix « Pas de setup » retiré.");return;
+    }
+    activeIncidents(setup).forEach(i=>{i.status="abandoned";i.resolvedAt=isoNow();});
+    setup.noSetup=true;setup.entryState=null;
+    saveNow();render();haptic([12,30,12]);showToast("Pas de setup : ne pas trader est une bonne décision.");
+  }
+  function selectEntryState(value){
+    const setup=setupFor();if(!["confirmed","anticipate"].includes(value)||setup.noSetup)return;
+    const deselecting=setup.entryState===value;
+    setup.entryState=deselecting?null:value;
+    if(setup.entryState==="anticipate")triggerIncident("anticipation","entry");
+    scheduleSave();render();haptic(value==="anticipate"?[18,25,18]:8);
+  }
+  function openSheet(mode){
+    activeSheet=mode;document.getElementById("sheet-overlay").classList.add("open");document.getElementById("sheet").classList.add("open");document.body.style.overflow="hidden";
+    renderConfig();
+    setTimeout(()=>document.getElementById("sheet-close").focus(),30);
+  }
+  function closeSheet(){
+    const refresh=activeSheet==="config";activeSheet=null;
+    document.getElementById("sheet-overlay").classList.remove("open");document.getElementById("sheet").classList.remove("open");document.body.style.overflow="";
+    if(refresh)render();
+  }
+  function cfgHeading(text,help){
+    const frag=document.createDocumentFragment();frag.append(node("h3","cfg-heading",text));if(help)frag.append(node("p","cfg-help",help));return frag;
+  }
+  function makeBackupPayload(){
+    return {format:BACKUP_FORMAT,formatVersion:BACKUP_FORMAT_VERSION,exportedAt:isoNow(),appVersion:7,data:clone(app)};
+  }
+  function backupFilename(){
+    return "pre-trade-validator-"+isoNow().slice(0,19).replace(/[T:]/g,"-")+".json";
+  }
+  function downloadBackupBlob(blob,filename){
+    const url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download=filename;link.rel="noopener";link.style.display="none";document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
+  async function exportBackup(){
+    let json;
+    try{json=JSON.stringify(makeBackupPayload(),null,2);}
+    catch(error){console.warn("Export impossible",error);showToast("Impossible de préparer la sauvegarde.");return;}
+    const filename=backupFilename(),blob=new Blob([json],{type:"application/json;charset=utf-8"});
+    let file=null,canShare=false;
+    try{
+      if(typeof File==="function")file=new File([blob],filename,{type:"application/json",lastModified:Date.now()});
+      canShare=!!(file&&typeof navigator.share==="function"&&typeof navigator.canShare==="function"&&navigator.canShare({files:[file]}));
+    }catch(error){console.warn("Partage de fichier indisponible",error);}
+    if(canShare){
+      try{await navigator.share({files:[file],title:"Sauvegarde Pre-Trade Validator"});showToast("Sauvegarde partagée.");return;}
+      catch(error){if(error&&error.name==="AbortError")return;console.warn("Partage indisponible, téléchargement utilisé",error);}
+    }
+    try{downloadBackupBlob(blob,filename);showToast("Sauvegarde exportée.");}
+    catch(error){console.warn("Téléchargement impossible",error);showToast("Impossible d’exporter la sauvegarde.");}
+  }
+  function validateBackupRoot(parsed){
+    if(!isPlainObject(parsed))throw new Error("Le fichier JSON est invalide.");
+    let source;
+    if(Object.prototype.hasOwnProperty.call(parsed,"format")){
+      if(parsed.format!==BACKUP_FORMAT)throw new Error("Ce fichier n’est pas une sauvegarde Pre-Trade Validator.");
+      if(parsed.formatVersion!==BACKUP_FORMAT_VERSION)throw new Error("Cette version de sauvegarde n’est pas prise en charge.");
+      if(![5,6,7].includes(parsed.appVersion)||!isPlainObject(parsed.data))throw new Error("La sauvegarde est incomplète.");
+      source=parsed.data;
+    }else if([5,6,7].includes(parsed.version))source=parsed;
+    else throw new Error("Version de sauvegarde incompatible.");
+    ["instruments","criteria","incidents"].forEach(key=>{
+      if(!Array.isArray(source[key]))throw new Error("Sauvegarde incomplète : "+key+".");
+    });
+    if(!isPlainObject(source.settings)||!isPlainObject(source.setups))throw new Error("La structure de la sauvegarde est invalide.");
+    const nq=source.instruments.find(item=>String(item&&item.name||"").trim().toUpperCase()==="NQ");
+    if(!nq||typeof nq.id!=="string"||!isPlainObject(source.setups[nq.id]))throw new Error("Le setup NQ est absent de la sauvegarde.");
+    const candidate=normalizeApp(source);
+    if(!candidate||candidate.version!==7||!candidate.currentId||!isPlainObject(candidate.setups[candidate.currentId]))throw new Error("Impossible de restaurer cette sauvegarde.");
+    return candidate;
+  }
+  function readBackupFile(file){
+    if(typeof file.text==="function")return file.text();
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(reader.error||new Error("Lecture impossible"));reader.readAsText(file,"utf-8");
+    });
+  }
+  function commitImportedBackup(candidate){
+    let serialized;
+    try{serialized=JSON.stringify(candidate);localStorage.setItem(STORAGE_KEY,serialized);}
+    catch(error){console.warn("Import non sauvegardé",error);showToast("Import annulé : stockage local indisponible.");return false;}
+    clearTimeout(saveTimer);app=candidate;closeSheet();render();showToast("Sauvegarde restaurée.");haptic([14,30,14]);return true;
+  }
+  async function prepareBackupImport(input){
+    const file=input.files&&input.files[0];input.value="";if(!file)return;
+    if(file.size>MAX_BACKUP_BYTES){showToast("Fichier trop volumineux (8 Mo maximum).");return;}
+    let candidate;
+    try{
+      const text=(await readBackupFile(file)).replace(/^\uFEFF/,"");
+      candidate=validateBackupRoot(JSON.parse(text));
+    }catch(error){console.warn("Import refusé",error);showToast(error&&error.message?error.message:"Sauvegarde invalide.");return;}
+    const summary="Les réglages et la session en cours seront remplacés, sans fusion.";
+    confirmAction("Importer cette sauvegarde ?",summary,()=>commitImportedBackup(candidate),"Importer");
+  }
+  function isStandaloneMode(){
+    return !!((window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true);
+  }
+  function hasSecureAppContext(){
+    const host=location.hostname.toLowerCase();
+    return window.isSecureContext===true||location.protocol==="https:"||host==="localhost"||host.endsWith(".localhost")||host==="127.0.0.1"||host==="[::1]";
+  }
+  function isIosDevice(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent||"")||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  }
+  function showInstallHelp(){
+    let text;
+    if(!hasSecureAppContext()){
+      text="Le mode application et le hors-ligne exigent HTTPS, ou une adresse locale sûre. Comme le serveur tourne sur ce téléphone, ouvre le même fichier avec http://127.0.0.1:PORT (ou http://localhost:PORT), puis recharge. Une adresse 192.168.x.x en HTTP ne suffit pas.";
+    }else if(isIosDevice()){
+      text="Dans Safari : touche Partager, puis Sur l’écran d’accueil, active Ouvrir comme app si l’option apparaît, et touche Ajouter. Ouvre ensuite l’icône une première fois pendant que le serveur tourne.";
+    }else{
+      text="Dans Chrome ou Edge : ouvre le menu ⋮ puis choisis Installer l’application ou Ajouter à l’écran d’accueil. Ouvre ensuite l’icône une première fois pendant que le serveur tourne.";
+    }
+    confirmAction("Installer sur le téléphone",text,()=>{},"Compris","neutral");
+  }
+  async function requestAppInstall(){
+    if(isStandaloneMode()){showToast("L’application est déjà ouverte en mode installé.");return;}
+    if(!hasSecureAppContext()){showInstallHelp();return;}
+    if(!deferredInstallPrompt){showInstallHelp();return;}
+    const promptEvent=deferredInstallPrompt;deferredInstallPrompt=null;
+    try{
+      await promptEvent.prompt();const choice=await promptEvent.userChoice;
+      if(choice&&choice.outcome==="accepted")showToast("Installation lancée.");else showToast("Installation annulée.");
+    }catch(error){console.warn("Invite d’installation indisponible",error);showInstallHelp();}
+  }
+  function renderConfig(){
+    document.getElementById("sheet-title").textContent="Réglages";
+    const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment();
+    const simpleSettings=node("section","cfg-group");simpleSettings.append(cfgHeading("Application","Le processus de validation est fixe. Les réponses sont déclaratives."));
+    simpleSettings.append(makeSettingSwitch("Vibrations","Retour haptique si l’appareil le permet.","haptics",app.settings.haptics));frag.append(simpleSettings);
+
+    const simpleBackup=node("section","cfg-group");simpleBackup.append(cfgHeading("Sauvegarde & transfert","La sauvegarde contient uniquement les réglages et la session en cours. Rien n’est envoyé en ligne."));
+    simpleBackup.append(setAction(makeButton("secondary-btn","Exporter / partager une sauvegarde"),"backup-export"),setAction(makeButton("secondary-btn","Importer une sauvegarde"),"backup-import"));
+    const simpleFileInput=node("input","sr-only");simpleFileInput.type="file";simpleFileInput.id="backup-import-file";simpleFileInput.accept=".json,application/json";simpleBackup.append(simpleFileInput);frag.append(simpleBackup);
+
+    const simpleInstall=node("section","cfg-group");simpleInstall.append(cfgHeading("Installation","Ajoute l’outil à l’écran d’accueil et active le mode hors ligne après une première ouverture réussie depuis le serveur."));
+    const simpleInstallCard=node("div","utility-card"),standaloneNow=isStandaloneMode(),secureNow=hasSecureAppContext(),swAvailable="serviceWorker" in navigator;
+    simpleInstallCard.append(node("div","utility-title","Mode application"));
+    simpleInstallCard.append(node("div","utility-status "+(standaloneNow||secureNow&&swAvailable?"ready":"warn"),standaloneNow?"● Installée":secureNow&&swAvailable?"● Prête à installer":"● Adresse non compatible"));
+    simpleInstallCard.append(node("div","utility-copy",standaloneNow?"L’application fonctionne déjà sans barre de navigateur.":secureNow?"Android peut proposer l’installation directement. Sur iPhone, utilise le menu Partager de Safari.":"Utilise localhost / 127.0.0.1 ou HTTPS pour activer l’installation et le hors-ligne."));
+    const simpleInstallButton=setAction(makeButton("secondary-btn",standaloneNow?"Application déjà installée":"Installer sur l’écran d’accueil"),"install-app");simpleInstallButton.disabled=standaloneNow;simpleInstallCard.append(simpleInstallButton);simpleInstall.append(simpleInstallCard);frag.append(simpleInstall);
+
+    const simpleResets=node("section","cfg-group");simpleResets.append(cfgHeading("Réinitialisation","Le reset efface les réponses et les incidents de la session. La réinitialisation complète efface aussi les réglages locaux."));
+    simpleResets.append(setAction(makeButton("secondary-btn","Reset de la session"),"reset-current"),setAction(makeButton("danger-btn","Réinitialisation complète"),"full-reset"));frag.append(simpleResets);
+    body.replaceChildren(frag);
+  }
+  function makeSettingSwitch(title,sub,key,checked){
+    const row=node("div","setting-row"),copy=node("div","setting-copy");copy.append(node("div","setting-title",title),node("div","setting-sub",sub));
+    const label=node("label","switch"),input=node("input","");input.type="checkbox";input.checked=checked;input.dataset.cfgField="setting-check";input.dataset.setting=key;input.setAttribute("aria-label",title);
+    label.append(input,node("span","switch-track"));row.append(copy,label);return row;
+  }
+
+  function resetCurrentSetup(){
+    const old=setupFor();
+    app.incidents=app.incidents.filter(incident=>incident.sessionId!==old.sessionId);
+    app.setups[app.currentId]=blankSetup("");saveNow();render();
+    if(activeSheet==="config")renderConfig();showToast("Nouvelle session prête.");haptic([14,30,14]);
+  }
+  function requestResetCurrent(){
+    confirmAction("Nouvelle session ?","Toutes les réponses de la session actuelle seront retirées.",resetCurrentSetup,"Réinitialiser");
+  }
+  function requestFullReset(){
+    confirmAction("Réinitialisation complète ?","Cette action supprimera la configuration et toutes les sélections locales.",()=>{
+      setTimeout(()=>confirmAction("Confirmation définitive","Toutes les données locales de Pre-Trade Validator seront effacées. Cette action est irréversible.",()=>{
+        try{[STORAGE_KEY,V6_KEY,V5_KEY,V4_KEY,V3_KEY,V2_KEY,V1_KEY].forEach(key=>localStorage.removeItem(key));}catch(error){console.warn("Effacement local impossible",error);}
+        app=makeFreshApp();saveNow();closeSheet();render();showToast("Application entièrement réinitialisée.");
+      },"Tout effacer"),60);
+    },"Continuer");
+  }
+  function confirmAction(title,text,callback,label,tone){
+    confirmCallback=callback;document.getElementById("confirm-title").textContent=title;document.getElementById("confirm-text").textContent=text;
+    const confirmButton=document.getElementById("confirm-ok");confirmButton.textContent=label||"Confirmer";confirmButton.classList.toggle("neutral",tone==="neutral");document.getElementById("confirm-overlay").classList.add("open");
+    setTimeout(()=>document.getElementById("confirm-cancel").focus(),20);
+  }
+  function closeConfirm(){confirmCallback=null;document.getElementById("confirm-overlay").classList.remove("open");}
+
+  document.getElementById("main-content").addEventListener("click",event=>{
+    const target=event.target.closest("[data-action]");if(!target)return;
+    const action=target.dataset.action,id=target.dataset.id,value=target.dataset.value;
+    if(action==="state-answer")setStateAnswer(id,value);
+    else if(action==="criterion-answer")setCriterionAnswer(id,value);
+    else if(action==="criterion-toggle")toggleCriterion(id);
+    else if(action==="no-setup")chooseNoSetup();
+    else if(action==="entry-state")selectEntryState(id);
+  });
+  document.getElementById("config-open").addEventListener("click",()=>openSheet("config"));
+  document.getElementById("reset-current").addEventListener("click",requestResetCurrent);
+  document.getElementById("sheet-close").addEventListener("click",closeSheet);
+  document.getElementById("sheet-overlay").addEventListener("click",closeSheet);
+  document.getElementById("confirm-cancel").addEventListener("click",closeConfirm);
+  document.getElementById("confirm-overlay").addEventListener("click",event=>{if(event.target.id==="confirm-overlay")closeConfirm();});
+  document.getElementById("confirm-ok").addEventListener("click",()=>{const callback=confirmCallback;closeConfirm();if(callback)callback();});
+  document.getElementById("sheet-body").addEventListener("click",event=>{
+    const target=event.target.closest("[data-action]");if(!target)return;
+    const action=target.dataset.action;
+    if(action==="backup-export")void exportBackup();
+    else if(action==="backup-import"){
+      const input=document.getElementById("backup-import-file");if(input){input.value="";input.click();}
+    }
+    else if(action==="install-app")void requestAppInstall();
+    else if(action==="reset-current")requestResetCurrent();
+    else if(action==="full-reset")requestFullReset();
+  });
+  document.getElementById("sheet-body").addEventListener("change",event=>{
+    if(event.target.id==="backup-import-file"){void prepareBackupImport(event.target);return;}
+    if(event.target.dataset.cfgField!=="setting-check"||event.target.dataset.setting!=="haptics")return;
+    app.settings.haptics=event.target.checked;
+    saveNow();render();
+  });
+  document.addEventListener("keydown",event=>{
+    if(event.key!=="Escape")return;
+    if(document.getElementById("confirm-overlay").classList.contains("open"))closeConfirm();else if(activeSheet)closeSheet();
+  });
+  window.addEventListener("beforeunload",saveNow);
+  window.addEventListener("beforeinstallprompt",event=>{
+    event.preventDefault();deferredInstallPrompt=event;
+  });
+  window.addEventListener("appinstalled",()=>{
+    deferredInstallPrompt=null;showToast("Application installée.");if(activeSheet==="config")renderConfig();
+  });
+  window.addEventListener("load",()=>{
+    if(!hasSecureAppContext()||!("serviceWorker" in navigator)||typeof navigator.serviceWorker.register!=="function")return;
+    navigator.serviceWorker.register("./sw.js").catch(error=>console.warn("Mode hors ligne indisponible",error));
+  });
+
+  loadApp();
+  render();
+  updateTiming();
+  setInterval(updateTiming,1000);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)updateTiming();});
+  window.PTV={
+    getVerdict:getVerdict,save:saveNow,exportData:()=>clone(app),resetCurrentSetup:resetCurrentSetup,
+    migrateV4ToV5:migrateV4ToV5,
+    makeBackup:()=>clone(makeBackupPayload()),validateBackup:raw=>clone(validateBackupRoot(raw)),exportBackup:exportBackup,isStandalone:isStandaloneMode
+  };
+  </script>
+</body>
+</html>
