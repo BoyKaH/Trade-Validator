@@ -35,19 +35,13 @@
     .objective{font-size:10px;font-weight:850;letter-spacing:.025em;color:#d1ae62;line-height:1.35}
     .phrase{display:none;font-size:10px;color:var(--dim);line-height:1.35;margin-top:3px}
     .timing{margin:0 2px 10px;padding:9px 0;border-bottom:1px solid #303030;color:#a6a6a6;font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums}
-    .timing-top,.timing-context{display:flex;align-items:center;gap:7px 10px;min-width:0}.timing-context{flex-wrap:wrap;margin-top:7px}
-    .timing-clock{color:#d0d0d0;white-space:nowrap;font-weight:750}.timing-session{color:#bcbcbc}.timing-next{color:#9a9a9a}
+    .timing-top{display:flex;align-items:center;gap:7px 10px;min-width:0}
+    .timing-clock{color:#d0d0d0;white-space:nowrap;font-weight:750}
     .timing-market{min-width:0;color:#b8b8b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .timing-schedule-btn{margin-left:auto;min-height:44px;border:1px solid #4a4a4a;border-radius:9px;background:#1b1b1b;color:#ddd;padding:0 12px;font-size:11px;font-weight:800;letter-spacing:.02em;cursor:pointer;flex:0 0 auto}
     .connection-status{font-size:9px;font-weight:800;color:#68d6af;white-space:nowrap}.connection-status.offline{color:#e3a33f}
     .toi-indicator{display:flex;align-items:center;gap:7px;width:100%;min-height:38px;margin-top:8px;padding:7px 9px;border:1px solid #343434;border-radius:9px;background:#151515;color:#aaa;font-size:10px;font-weight:750}
     .toi-indicator::before{content:"";width:8px;height:8px;border-radius:50%;background:#777;flex:0 0 auto}.toi-indicator.inside{border-color:#8a6420;background:#271c08;color:#f0c36a}.toi-indicator.inside::before{background:#e3a33f;box-shadow:0 0 10px rgba(227,163,63,.65)}.toi-indicator.near{border-color:#365f73;background:#0b1d26;color:#8ad8fa}.toi-indicator.near::before{background:#64d8ff}.toi-indicator.closed{color:#888}.toi-indicator.preferred{border-color:#9a7127}
-    .timing-progress{min-width:0;margin-top:8px}.timing-progress[hidden]{display:none}
-    .timing-progress progress{display:block;width:100%;height:3px;border:0;border-radius:2px;overflow:hidden;background:#2b2b2b;color:#929ba3;appearance:none;-webkit-appearance:none}
-    .timing-progress progress::-webkit-progress-bar{background:#2b2b2b;border-radius:2px}
-    .timing-progress progress::-webkit-progress-value{background:#929ba3;border-radius:2px}
-    .timing-progress progress::-moz-progress-bar{background:#929ba3;border-radius:2px}
-    .timing-progress-labels{display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:#8d8d8d}
     .process-card{background:var(--panel);border:1px solid #2c2c2c;border-radius:14px}
     #main-content{min-width:0}
     .progress{position:sticky;z-index:120;top:env(safe-area-inset-top,0px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:7px -4px;padding:6px 4px;background:rgba(15,15,15,.96);border-bottom:1px solid rgba(255,255,255,.06);box-shadow:0 8px 14px rgba(0,0,0,.28);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
@@ -88,12 +82,6 @@
     .subgroup-title,.entry-label{font-size:9.5px;font-weight:850;letter-spacing:.1em;text-transform:uppercase;color:#8c9aa4;margin:0 0 7px 2px}
     .no-setup-btn{width:100%;min-height:46px;margin-top:9px;border-radius:10px;border:1px solid #6b6b6b;background:#202020;color:#eee;font-size:11px;font-weight:850;letter-spacing:.04em;cursor:pointer}
     .no-setup-btn[aria-pressed="true"]{background:#e3e3e3;color:#181818;border-color:#fff}
-    .entry-state{margin-top:10px;padding-top:9px;border-top:1px solid #242424}
-    .anti-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-    .anti-btn{min-height:46px;border-radius:9px;border:1px solid #3b3b3b;background:#151515;color:#aaa;font-size:11px;font-weight:850;cursor:pointer}
-    .anti-btn.confirmed[aria-pressed="true"]{border-color:#227b5d;background:var(--green-bg);color:var(--green)}
-    .anti-btn.anticipate[aria-pressed="true"]{border-color:#9b3c3c;background:var(--red-bg);color:#ff8b8b}
-    .bonus-note{font-size:10px;color:#9990c4;line-height:1.4;margin:9px 1px 0}
     .incident-banner{border:1px solid #9a3939;background:#2a0e0e;border-radius:12px;padding:10px;margin:7px 0}
     .incident-title{font-size:12px;font-weight:900;color:#ff9393;letter-spacing:.03em}
     .incident-copy{font-size:10.5px;color:#d28c8c;line-height:1.45;margin-top:5px}
@@ -146,19 +134,14 @@
         <div class="phrase">PROCESSUS &gt; PNL · Processus, pas prédiction.</div>
       </div>
     </header>
-    <div class="timing" aria-label="Repères horaires ICT en heure de New York">
+    <div class="timing" aria-label="Time Of Interest en heure de Paris">
       <div class="timing-top">
-        <span class="timing-clock" id="ny-clock">NY · —</span>
+        <span class="timing-clock" id="paris-clock">Paris · —</span>
         <span class="timing-market" id="timing-market">NQ · —</span>
         <span class="connection-status" id="connection-status">En ligne</span>
         <button class="timing-schedule-btn" type="button" id="schedule-open">Horaires</button>
       </div>
-      <div class="timing-context"><span class="timing-session" id="timing-session">—</span><span class="timing-next" id="timing-next">—</span></div>
       <div class="toi-indicator" id="toi-indicator">TOI · calcul en cours</div>
-      <div class="timing-progress" id="timing-progress" hidden>
-        <progress id="session-progress" max="100" value="0" aria-label="Progression du créneau ICT en cours"></progress>
-        <div class="timing-progress-labels" aria-hidden="true"><span id="timing-start">Début</span><span id="timing-middle">Milieu</span><span id="timing-end">Fin</span></div>
-      </div>
     </div>
     <div id="main-content"></div>
   </main>
@@ -195,7 +178,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v7";
-  const APP_VERSION = "1.1.0";
+  const APP_VERSION = "1.2.0";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
   const V4_KEY = "ptv_v4";
@@ -216,17 +199,11 @@
     {id:"c_setup_context",shortTitle:"Narrative + DOL clairs",description:"Le scénario, sa cible et sa fenêtre de temps sont définis avant de chercher une entrée.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
     {id:"c_htf_zone",shortTitle:"Prix dans mon POI",description:"Le prix traite dans la zone de travail prévue par le scénario.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
     {id:"c_liquidity_taken",shortTitle:"Prise de liquidité conforme",description:"La liquidité attendue par mon modèle a été prise.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
-    {id:"c_setup_liquidity",shortTitle:"CSD conforme à mon modèle",description:"Le changement d’orderflow attendu par mon modèle est présent : c’est le setup.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
+    {id:"c_setup_liquidity",shortTitle:"CSD conforme à mon modèle",description:"Le changement d’orderflow attendu par mon modèle est présent : c’est le déclencheur d’exécution.",section:"entry",subgroup:"trigger",type:"boolean",behavior:"wait",systemRole:"core"},
     {id:"c_smt",shortTitle:"SMT présent",description:"Confluence facultative, sans effet sur l’autorisation.",section:"setup",subgroup:"confluence",type:"boolean",behavior:"bonus",systemRole:"bonus"}
   ];
   const DEFAULT_SETTINGS = {haptics:true,anticipationEffect:"block"};
-  // Créneaux de référence en heure locale de New York, indépendants du verdict.
-  const TIMING_SESSIONS = [
-    {name:"Asie",start:20*60,end:24*60,days:[0,1,2,3,4]},
-    {name:"Londres",start:2*60,end:5*60,days:[1,2,3,4,5]},
-    {name:"New York matin",start:7*60,end:10*60,days:[1,2,3,4,5]},
-    {name:"New York après-midi",start:13*60+30,end:16*60,days:[1,2,3,4,5]}
-  ];
+  // Fenêtres TOI de référence en heure locale de New York, indépendantes du verdict.
   const TOI_NEAR_MINUTES = 15;
   const REFERENCE_WINDOWS = [
     {name:"ASIAN",tone:"asian",days:[0,1,2,3,4],windows:[[18*60+45,19*60+15],[19*60+45,20*60+15],[20*60+45,21*60+15],[21*60+45,22*60+15]]},
@@ -320,23 +297,7 @@
     const p=newYorkParts(now),today=new Date(Date.UTC(p.year,p.month-1,p.day));
     const minutes=p.hour*60+p.minute+p.second/60,market=marketDay(today);
     market.open=market.covered?market.hours.some(([start,end])=>minutes>=start&&minutes<end):null;
-    let current=null,next=null;
-    for(let offset=0;offset<=10;offset++){
-      const date=new Date(Date.UTC(p.year,p.month-1,p.day+offset)),schedule=marketDay(date);
-      if(!schedule.covered)continue;
-      TIMING_SESSIONS.forEach(session=>{
-        if(!session.days.includes(date.getUTCDay()))return;
-        schedule.hours.forEach(([open,close])=>{
-          const start=Math.max(session.start,open),end=Math.min(session.end,close);
-          if(start>=end)return;
-          const at=newYorkInstant(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate(),start);
-          if(offset===0&&minutes>=start&&minutes<end)current={name:session.name,start:start,end:end};
-          if(at>now.getTime()&&(!next||at<next.at))next={name:session.name,at:at,start:start};
-        });
-      });
-    }
-    const progress=current?Math.max(0,Math.min(100,(minutes-current.start)/(current.end-current.start)*100)):null;
-    return {parts:p,current:current,next:next,progress:progress,market:market};
+    return {parts:p,market:market};
   }
   function getTimeOfInterest(now,timing){
     const p=timing.parts,todayMinutes=p.hour*60+p.minute+p.second/60;
@@ -363,40 +324,26 @@
     const minutes=Math.max(0,Math.ceil(totalMinutes)),hours=Math.floor(minutes/60),rest=minutes%60;
     return hours?hours+" h "+String(rest).padStart(2,"0")+" min":minutes+" min";
   }
-  function nyTime(minutes){
-    const normalized=((Math.round(minutes)%1440)+1440)%1440;
-    return String(Math.floor(normalized/60)).padStart(2,"0")+":"+String(normalized%60).padStart(2,"0");
+  function parisRange(startAt,endAt){
+    return PARIS_TIME_FORMATTER.format(new Date(startAt))+"–"+PARIS_TIME_FORMATTER.format(new Date(endAt))+" Paris";
   }
-  function nyRange(start,end){return nyTime(start)+"–"+nyTime(end)+" NY";}
   function updateConnectionStatus(){
     const status=document.getElementById("connection-status"),online=navigator.onLine!==false;
     status.textContent=online?"En ligne":"Hors ligne";status.classList.toggle("offline",!online);
   }
   function updateTiming(){
-    const now=new Date(),timing=getTiming(now),toi=getTimeOfInterest(now,timing),pad=value=>String(value).padStart(2,"0");
-    document.getElementById("ny-clock").textContent="NY · "+pad(timing.parts.hour)+":"+pad(timing.parts.minute);
+    const now=new Date(),timing=getTiming(now),toi=getTimeOfInterest(now,timing);
+    document.getElementById("paris-clock").textContent="Paris · "+PARIS_TIME_FORMATTER.format(now);
     document.getElementById("timing-market").textContent=timing.market.open===null?"NQ · calendrier à actualiser":"NQ · "+(timing.market.open?"ouvert":"fermé")+(timing.market.provisional?" · prévisionnel":"")+(timing.market.holiday?" · "+timing.market.holiday:"");
-    document.getElementById("timing-session").textContent=timing.current?"Session · "+timing.current.name+" · "+nyRange(timing.current.start,timing.current.end):timing.market.covered?"Hors session ICT":"Session · calendrier non couvert";
-    document.getElementById("timing-progress").hidden=!timing.current;
-    const progress=document.getElementById("session-progress");
-    progress.value=timing.progress===null?0:timing.progress;
-    if(timing.current){
-      progress.setAttribute("aria-label","Progression du créneau ICT "+timing.current.name);
-      document.getElementById("timing-start").textContent=nyTime(timing.current.start);
-      document.getElementById("timing-middle").textContent=nyTime((timing.current.start+timing.current.end)/2);
-      document.getElementById("timing-end").textContent=nyTime(timing.current.end);
-    }
-    const next=timing.next;
-    document.getElementById("timing-next").textContent=next?"Prochaine · "+next.name+" dans "+durationLabel((next.at-now.getTime())/60000)+" ("+nyTime(next.start)+" NY)":"Prochaine session · calendrier à actualiser";
     const indicator=document.getElementById("toi-indicator");let state="outside",preferred=false,text;
     if(toi.current){
-      state="inside";preferred=toi.current.preferred;text="TOI EN COURS — "+(preferred?"★ ":"")+toi.current.name+" · "+nyRange(toi.current.start,toi.current.end)+" · fin dans "+durationLabel((toi.current.endAt-now.getTime())/60000);
+      state="inside";preferred=toi.current.preferred;text="TOI EN COURS — "+(preferred?"★ ":"")+toi.current.name+" · "+parisRange(toi.current.startAt,toi.current.endAt)+" · fin dans "+durationLabel((toi.current.endAt-now.getTime())/60000);
     }else if(toi.next&&(toi.next.startAt-now.getTime())/60000<=TOI_NEAR_MINUTES){
-      state="near";preferred=toi.next.preferred;text="TOI PROCHE — "+(preferred?"★ ":"")+toi.next.name+" · "+nyRange(toi.next.start,toi.next.end)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
+      state="near";preferred=toi.next.preferred;text="TOI PROCHE — "+(preferred?"★ ":"")+toi.next.name+" · "+parisRange(toi.next.startAt,toi.next.endAt)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
     }else if(timing.market.open===false||timing.market.open===null){
       state="closed";text=timing.market.open===null?"TOI INDISPONIBLE — calendrier à actualiser":"TOI INDISPONIBLE — NQ fermé";
     }else if(toi.next){
-      preferred=toi.next.preferred;text="HORS TOI — prochain "+(preferred?"★ ":"")+toi.next.name+" · "+nyRange(toi.next.start,toi.next.end)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
+      preferred=toi.next.preferred;text="HORS TOI — prochain "+(preferred?"★ ":"")+toi.next.name+" · "+parisRange(toi.next.startAt,toi.next.endAt)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
     }else text="HORS TOI — calendrier à actualiser";
     indicator.className="toi-indicator "+state+(preferred?" preferred":"");indicator.textContent=text;
     updateConnectionStatus();
@@ -463,7 +410,8 @@
     setup.noSetup=!!(raw&&raw.noSetup);
     const rawStates=raw&&raw.criterionStates&&typeof raw.criterionStates==="object"?raw.criterionStates:{};
     data.criteria.forEach(c=>setup.criterionStates[c.id]=normalizeCriterionState(rawStates[c.id],c.behavior));
-    setup.entryState=raw&&["confirmed","anticipate"].includes(raw.entryState)?raw.entryState:null;
+    // L’ancienne réponse d’exécution était déclarative ; elle n’est plus utilisée.
+    setup.entryState=null;
     setup.incidentIds=Array.isArray(raw&&raw.incidentIds)?raw.incidentIds.map(v=>safeText(v,80,"")).filter(Boolean).slice(0,200):[];
     return setup;
   }
@@ -488,6 +436,9 @@
     data.incidents=Array.isArray(raw&&raw.incidents)?raw.incidents.slice(0,2000).map(normalizeIncident):[];
     data.incidents=data.incidents.filter((item,index,array)=>array.findIndex(v=>v.id===item.id)===index);
     data.incidents.forEach(incident=>{
+      if(incident.type==="anticipation"&&incident.sources.includes("entry")){
+        incident.status="input_error";incident.resolvedAt=isoNow();return;
+      }
       if(incident.status!=="active"||!(["anticipation","money"].includes(incident.type)))return;
       incident.sources=incident.sources.filter(source=>source!=="reason");
       if(!incident.sources.length){incident.status="input_error";incident.resolvedAt=isoNow();}
@@ -607,8 +558,7 @@
       else if(!value)push("wait","state:"+question.id,"État du trader","Répondre à l’état du trader");
     });
     orderedCriteria("setup","gate").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
-    if(!setup.entryState)push("wait","entry:state","Exécution","Confirmer l’exécution du plan");
-    else if(setup.entryState==="anticipate")push("block","entry:anticipate","Anticipation","Ne pas anticiper le plan");
+    orderedCriteria("entry","trigger").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
 
     const blocks=problems.filter(p=>p.severity==="block").sort((a,b)=>a.rank-b.rank);
     const waits=problems.filter(p=>p.severity==="wait").sort((a,b)=>a.rank-b.rank);
@@ -632,9 +582,8 @@
       return problems.length?"wait":"done";
     }
     if(stage==="entry"){
-      if(setup.entryState==="anticipate")return "stop";
-      if(!setup.entryState)return "wait";
-      return "done";
+      const criteria=orderedCriteria("entry","trigger");
+      return criteria.some(c=>criterionProblem(c,setup,0))?"wait":"done";
     }
     return "wait";
   }
@@ -699,7 +648,7 @@
     const items=[
       {stage:"state",n:"1",label:"ÉTAT",status:stageStatus("state",setup)},
       {stage:"setup",n:"2",label:"SETUP",status:stageStatus("setup",setup)},
-      {stage:"entry",n:"3",label:"EXÉCUTION",status:stageStatus("entry",setup)}
+      {stage:"entry",n:"3",label:"DÉCLENCHEUR",status:stageStatus("entry",setup)}
     ];
     items.forEach(item=>{
       const locked=!stageAccessible(item.stage,setup),current=expandedStageFor(setup)===item.stage,box=setAction(makeButton("progress-step "+item.status+(current?" current":""),"","Ouvrir "+item.label),"stage-jump",item.stage);box.disabled=locked;
@@ -759,7 +708,7 @@
     row.append(choices);return row;
   }
   function renderSetupStage(container,setup){
-    const stage=stageCard("setup",2,"SETUP","Quatre vérifications rapides avant toute exécution.",setup),card=stage.card;
+    const stage=stageCard("setup",2,"SETUP","Trois prérequis à valider avant de chercher le déclencheur.",setup),card=stage.card;
     const gates=orderedCriteria("setup","gate");
     if(gates.length){
       const wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Validation du trade"));
@@ -775,14 +724,9 @@
     container.append(card);
   }
   function renderEntryStage(container,setup){
-    const stage=stageCard("entry",3,"EXÉCUTION","Une seule vérification : suivre le plan, sans négocier avec soi-même.",setup),card=stage.card;
-    const entry=node("div","entry-state");entry.append(node("div","entry-label","J’exécute mon plan sans anticiper."));
-    const grid=node("div","anti-grid");
-    [["confirmed","OUI","confirmed"],["anticipate","NON","anticipate"]].forEach(item=>{
-      const button=setAction(makeButton("anti-btn "+item[2],item[1]),"entry-state",item[0]);
-      button.setAttribute("aria-pressed",String(setup.entryState===item[0]));grid.append(button);
-    });
-    entry.append(grid);stage.body.append(entry,node("div","bonus-note","Le SMT est facultatif : il enrichit le verdict sans autoriser un setup incomplet."));
+    const stage=stageCard("entry",3,"DÉCLENCHEUR","Le signal d’exécution objectif attendu par le modèle doit être présent.",setup),card=stage.card;
+    const triggers=orderedCriteria("entry","trigger"),wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Validation du déclencheur"));
+    const list=node("div","gate-list");triggers.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);stage.body.append(wrap);
     container.append(card);
   }
   function renderSticky(verdict){
@@ -839,7 +783,7 @@
     const allowed=["yes","no"];
     if(!allowed.includes(value))return;
     const setup=setupFor(),next=setup.criterionStates[id]===value?null:value;
-    setup.criterionStates[id]=next;scheduleSave();renderStageChange("setup",true);haptic(next===null?6:next==="no"?[15,22,15]:8);
+    setup.criterionStates[id]=next;scheduleSave();renderStageChange(criterion.section==="entry"?"entry":"setup",true);haptic(next===null?6:next==="no"?[15,22,15]:8);
   }
   function toggleCriterion(id){
     const criterion=app.criteria.find(c=>c.id===id);if(!criterion||setupFor().noSetup)return;
@@ -853,13 +797,6 @@
     activeIncidents(setup).forEach(i=>{i.status="abandoned";i.resolvedAt=isoNow();});
     setup.noSetup=true;setup.entryState=null;
     saveNow();expandedStage="setup";render();haptic([12,30,12]);showToast("Pas de setup : ne pas trader est une bonne décision.");
-  }
-  function selectEntryState(value){
-    const setup=setupFor();if(!["confirmed","anticipate"].includes(value)||setup.noSetup)return;
-    const deselecting=setup.entryState===value;
-    setup.entryState=deselecting?null:value;
-    if(setup.entryState==="anticipate")triggerIncident("anticipation","entry");
-    scheduleSave();renderStageChange("entry",false);haptic(value==="anticipate"?[18,25,18]:8);
   }
   function openSheet(mode){
     activeSheet=mode;document.getElementById("sheet-overlay").classList.add("open");document.getElementById("sheet").classList.add("open");document.body.style.overflow="hidden";
@@ -1072,7 +1009,6 @@
     else if(action==="criterion-answer")setCriterionAnswer(id,value);
     else if(action==="criterion-toggle")toggleCriterion(id);
     else if(action==="no-setup")chooseNoSetup();
-    else if(action==="entry-state")selectEntryState(id);
   });
   document.getElementById("config-open").addEventListener("click",()=>openSheet("config"));
   document.getElementById("verdict-open").addEventListener("click",()=>openSheet("verdict"));

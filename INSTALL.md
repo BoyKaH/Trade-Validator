@@ -73,7 +73,7 @@ Sur iPhone, le bouton d’installation intégré peut ne pas apparaître : le me
 
 ## 6. Utiliser l’application sur ordinateur
 
-Ouvre la même URL HTTPS dans Edge, Chrome, Firefox ou Safari. L’interface passe automatiquement en deux colonnes sur un écran moyen et jusqu’à quatre colonnes sur un grand écran.
+Ouvre la même URL HTTPS dans Edge, Chrome, Firefox ou Safari. L’interface passe automatiquement en deux colonnes sur un écran moyen et trois colonnes sur un grand écran.
 
 Dans Edge ou Chrome, tu peux également utiliser l’icône d’installation située dans la barre d’adresse pour ouvrir le Validator comme une application indépendante.
 
@@ -129,13 +129,13 @@ Laisse l’application ouverte une première fois avec le serveur actif, recharg
 
 Les réglages et les boutons activés sont conservés dans le stockage local du navigateur jusqu’à la création d’une nouvelle session. Ils ne sont pas envoyés au NAS par l’application. Effacer les données du navigateur ou utiliser une réinitialisation complète peut les supprimer ; exporte un JSON si tu veux transférer ton état.
 
-L’application guide successivement l’état du trader, les quatre critères du setup et l’exécution. Le setup vérifie la narrative et le DOL, le POI, la prise de liquidité et le CSD. Le SMT reste facultatif. Elle ne calcule ni le stop, ni la taille de position, ni les limites de risque et ne propose pas d’historique de trades consultable. « Nouvelle session » efface les réponses et les incidents de la session en cours.
+L’application guide successivement l’état du trader, les trois prérequis du setup puis le déclencheur. Le setup vérifie la narrative et le DOL, le POI et la prise de liquidité. L’étape 3 confirme ensuite le CSD attendu par le modèle. Le SMT reste facultatif. Elle ne calcule ni le stop, ni la taille de position, ni les limites de risque et ne propose pas d’historique de trades consultable. « Nouvelle session » efface les réponses et les incidents de la session en cours.
 
 ## 11. Repères horaires
 
 Le bandeau affiche l’heure de New York, le créneau ICT en cours et le temps restant avant le prochain. Les horaires sont exprimés en heure de New York, avec changement d’heure automatique : Asie 20 h–0 h (du dimanche au jeudi), Londres 2 h–5 h, New York matin 7 h–10 h et New York après-midi 13 h 30–16 h (du lundi au vendredi).
 
-Le statut du NQ est affiché séparément des créneaux ICT. Le marché peut être ouvert entre deux créneaux : « Aucun créneau ICT actif » ne signifie pas que le marché est fermé. Les créneaux et leur progression sont limités aux périodes d’ouverture prévues ; les fenêtres annulées par un jour férié sont exclues du compte à rebours.
+Le bandeau supérieur affiche uniquement le statut du NQ et le Time Of Interest. L’horloge et les plages TOI sont présentées en heure de Paris pour une lecture directe depuis la France.
 
 Le bandeau TOI utilise les fenêtres du tableau « Horaires ». Il indique une fenêtre en cours, une fenêtre proche lorsqu’elle commence dans les quinze prochaines minutes, ou la prochaine fenêtre disponible. Les jours non applicables et les fenêtres situées après une fermeture anticipée du NQ sont ignorés. Cet indicateur reste informatif et n’a aucun effet sur le verdict.
 
