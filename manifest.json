@@ -4,7 +4,7 @@
   "short_name": "Validator",
   "description": "Validation du processus NQ avant toute prise de trade.",
   "lang": "fr",
-  "start_url": "./pre_trade_validator.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

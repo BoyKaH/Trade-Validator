@@ -1,7 +1,8 @@
 "use strict";
 
-const CACHE_NAME = "pre-trade-validator-shell-v9";
+const CACHE_NAME = "pre-trade-validator-shell-v13";
 const CORE_ASSETS = [
+  "./index.html",
   "./pre_trade_validator.html",
   "./manifest.json",
   "./icon-192.png",
@@ -46,7 +47,7 @@ self.addEventListener("fetch", event => {
       .catch(async () => {
         const cached = await caches.match(request, {ignoreSearch:true});
         if(cached) return cached;
-        if(request.mode === "navigate") return caches.match("./pre_trade_validator.html");
+        if(request.mode === "navigate") return caches.match("./index.html");
         throw new Error("Ressource hors ligne indisponible");
       })
   );
