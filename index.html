@@ -106,6 +106,8 @@
     .secondary-btn{border:1px solid #3a3a3a;background:#181818;color:#aaa;margin-bottom:7px}.danger-btn{border:1px solid #7b3030;background:#250e0e;color:#f08080;margin-top:7px}
     .utility-card{border:1px solid #343434;background:#111;border-radius:11px;padding:11px;margin-bottom:8px}.utility-title{font-size:11.5px;font-weight:800;color:#e5e5e5}.utility-copy{font-size:10px;color:#999;line-height:1.45;margin:5px 0 9px}.utility-status{display:inline-flex;align-items:center;gap:5px;border:1px solid #444;border-radius:999px;padding:5px 8px;margin-bottom:9px;color:#bbb;font-size:9px;font-weight:800}.utility-status.ready{border-color:#25694f;background:#0a2017;color:#66d3ac}.utility-status.warn{border-color:#76501b;background:#201708;color:#e1a84e}
     .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #2f2f2f}.setting-copy{min-width:0}.setting-title{font-size:11.5px;color:#e5e5e5}.setting-sub{font-size:10px;color:#999;margin-top:3px;line-height:1.4}
+    .setting-select{min-width:88px;min-height:42px;border:1px solid #444;border-radius:9px;background:#181818;color:#eee;padding:0 9px;font-family:inherit;font-size:11px;font-weight:700}
+    .toi-alert-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:9px 0 12px}.toi-alert-option{min-height:43px;border:1px solid #3d3d3d;border-radius:9px;background:#161616;color:#999;padding:7px;font-size:9.5px;font-weight:750;line-height:1.3;cursor:pointer}.toi-alert-option[aria-pressed="true"]{border-color:#26785c;background:#08251b;color:#70dbb3}
     .switch{position:relative;width:44px;height:25px;flex:0 0 auto}.switch input{position:absolute;opacity:0}.switch-track{display:block;width:44px;height:25px;border-radius:14px;background:#333;border:1px solid #444;cursor:pointer}.switch input:checked+.switch-track{background:#176347;border-color:#298162}.switch-track:after{content:"";display:block;width:19px;height:19px;border-radius:50%;background:#aaa;margin:2px;transition:transform .15s}.switch input:checked+.switch-track:after{transform:translateX(19px);background:#fff}
     .schedule-intro{font-size:10.5px;color:#a0a0a0;line-height:1.45;margin:0 0 12px}.schedule-cards{display:grid;gap:8px}.schedule-card{border:1px solid #383838;border-radius:11px;background:#121212;padding:10px}.schedule-card.preferred{border-color:#79591e;background:#211908}.schedule-card-head{font-size:12px;font-weight:850;margin-bottom:7px}.schedule-card.asian .schedule-card-head{color:#d398e6}.schedule-card.london .schedule-card-head{color:#91b9f2}.schedule-card.ny .schedule-card-head{color:#f28c93}.schedule-card.preferred .schedule-card-head{color:#f0c36a}.schedule-zone{display:grid;grid-template-columns:72px minmax(0,1fr);gap:7px;padding:4px 0;border-top:1px solid #2d2d2d}.schedule-zone-label{font-size:10px;font-weight:800;color:#999}.schedule-zone-times{font-size:10.5px;color:#d0d0d0;line-height:1.45;font-variant-numeric:tabular-nums}.schedule-card.preferred .schedule-zone-times{color:#efc774}.schedule-line{display:block}.schedule-footnote{font-size:9.5px;color:#929292;line-height:1.45;margin:11px 2px 0}
     .verdict-detail{border:1px solid #3a3a3a;border-radius:12px;background:#121212;padding:13px}.verdict-detail-title{font-size:17px;font-weight:880}.verdict-detail-message{font-size:11.5px;line-height:1.5;color:#c0c0c0;margin-top:7px}.verdict-missing{margin:12px 0 0;padding-left:20px;color:#bbb;font-size:11px;line-height:1.6}
@@ -178,7 +180,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v7";
-  const APP_VERSION = "1.2.0";
+  const APP_VERSION = "1.3.0";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
   const V4_KEY = "ptv_v4";
@@ -202,18 +204,22 @@
     {id:"c_setup_liquidity",shortTitle:"CSD conforme à mon modèle",description:"Le changement d’orderflow attendu par mon modèle est présent : c’est le déclencheur d’exécution.",section:"entry",subgroup:"trigger",type:"boolean",behavior:"wait",systemRole:"core"},
     {id:"c_smt",shortTitle:"SMT présent",description:"Confluence facultative, sans effet sur l’autorisation.",section:"setup",subgroup:"confluence",type:"boolean",behavior:"bonus",systemRole:"bonus"}
   ];
-  const DEFAULT_SETTINGS = {haptics:true,anticipationEffect:"block"};
+  const DEFAULT_SETTINGS = {haptics:true,anticipationEffect:"block",toiNotifications:false,toiLeadMinutes:15,toiAlertWindows:["london-star-0","london-star-1","ny-am-star-0","ny-am-star-1","ny-pm-star-0","ny-pm-star-1"]};
   // Fenêtres TOI de référence en heure locale de New York, indépendantes du verdict.
   const TOI_NEAR_MINUTES = 15;
   const REFERENCE_WINDOWS = [
-    {name:"ASIAN",tone:"asian",days:[0,1,2,3,4],windows:[[18*60+45,19*60+15],[19*60+45,20*60+15],[20*60+45,21*60+15],[21*60+45,22*60+15]]},
-    {name:"LONDON",tone:"london",days:[1,2,3,4,5],preferred:true,windows:[[2*60+45,3*60+15],[3*60+45,4*60+15]]},
-    {name:"LONDON",tone:"london",days:[1,2,3,4,5],windows:[[4*60+45,5*60+15],[5*60+45,6*60+15]]},
-    {name:"NY AM",tone:"ny",days:[1,2,3,4,5],windows:[[7*60+45,8*60+15],[8*60+45,9*60+15]]},
-    {name:"NY AM",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[9*60+45,10*60+15],[10*60+45,11*60+15]]},
-    {name:"NY PM",tone:"ny",days:[1,2,3,4,5],windows:[[11*60+45,12*60+15],[12*60+45,13*60+15]]},
-    {name:"NY PM",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[13*60+45,14*60+15],[14*60+45,15*60+15]]}
+    {id:"asian",name:"ASIAN",tone:"asian",days:[0,1,2,3,4],windows:[[18*60+45,19*60+15],[19*60+45,20*60+15],[20*60+45,21*60+15],[21*60+45,22*60+15]]},
+    {id:"london-star",name:"LONDON",tone:"london",days:[1,2,3,4,5],preferred:true,windows:[[2*60+45,3*60+15],[3*60+45,4*60+15]]},
+    {id:"london",name:"LONDON",tone:"london",days:[1,2,3,4,5],windows:[[4*60+45,5*60+15],[5*60+45,6*60+15]]},
+    {id:"ny-am",name:"NY AM",tone:"ny",days:[1,2,3,4,5],windows:[[7*60+45,8*60+15],[8*60+45,9*60+15]]},
+    {id:"ny-am-star",name:"NY AM",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[9*60+45,10*60+15],[10*60+45,11*60+15]]},
+    {id:"ny-pm",name:"NY PM",tone:"ny",days:[1,2,3,4,5],windows:[[11*60+45,12*60+15],[12*60+45,13*60+15]]},
+    {id:"ny-pm-star",name:"NY PM",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[13*60+45,14*60+15],[14*60+45,15*60+15]]}
   ];
+  function toiWindowId(session,index){return session.id+"-"+index;}
+  function allToiWindowIds(preferredOnly){
+    const ids=[];REFERENCE_WINDOWS.forEach(session=>{if(preferredOnly&&!session.preferred)return;session.windows.forEach((window,index)=>ids.push(toiWindowId(session,index)));});return ids;
+  }
   const NY_FORMATTER = new Intl.DateTimeFormat("en-GB",{
     timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",
     hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"
@@ -425,9 +431,17 @@
     data.instruments=[{id:nqId,name:"NQ"}];data.currentId=nqId;
 
     const rawSettings=isPlainObject(raw&&raw.settings)?raw.settings:{};
+    const validToiWindowIds=new Set(allToiWindowIds(false));
+    const legacyPreferredOnly=rawSettings.toiPreferredOnly!==false;
+    const selectedToiWindows=Array.isArray(rawSettings.toiAlertWindows)
+      ?rawSettings.toiAlertWindows.filter(id=>typeof id==="string"&&validToiWindowIds.has(id))
+      :allToiWindowIds(legacyPreferredOnly);
     data.settings={
       haptics:typeof rawSettings.haptics==="boolean"?rawSettings.haptics:DEFAULT_SETTINGS.haptics,
-      anticipationEffect:["wait","block"].includes(rawSettings.anticipationEffect)?rawSettings.anticipationEffect:"block"
+      anticipationEffect:["wait","block"].includes(rawSettings.anticipationEffect)?rawSettings.anticipationEffect:"block",
+      toiNotifications:typeof rawSettings.toiNotifications==="boolean"?rawSettings.toiNotifications:DEFAULT_SETTINGS.toiNotifications,
+      toiLeadMinutes:[5,10,15,30].includes(Number(rawSettings.toiLeadMinutes))?Number(rawSettings.toiLeadMinutes):DEFAULT_SETTINGS.toiLeadMinutes,
+      toiAlertWindows:[...new Set(selectedToiWindows)]
     };
 
     const rawSetups=raw&&raw.setups&&typeof raw.setups==="object"?raw.setups:{};
@@ -905,7 +919,7 @@
     let serialized;
     try{serialized=JSON.stringify(candidate);localStorage.setItem(STORAGE_KEY,serialized);}
     catch(error){console.warn("Import non sauvegardé",error);showToast("Import annulé : stockage local indisponible.");return false;}
-    clearTimeout(saveTimer);app=candidate;closeSheet();render();showToast("Sauvegarde restaurée.");haptic([14,30,14]);return true;
+    clearTimeout(saveTimer);app=candidate;closeSheet();render();syncAndroidToiNotifications(false);showToast("Sauvegarde restaurée.");haptic([14,30,14]);return true;
   }
   async function prepareBackupImport(input){
     const file=input.files&&input.files[0];input.value="";if(!file)return;
@@ -924,6 +938,52 @@
   function hasSecureAppContext(){
     const host=location.hostname.toLowerCase();
     return window.isSecureContext===true||location.protocol==="https:"||host==="localhost"||host.endsWith(".localhost")||host==="127.0.0.1"||host==="[::1]";
+  }
+  function androidBridge(){
+    return window.TradeValidatorAndroid&&typeof window.TradeValidatorAndroid.getNotificationStatus==="function"?window.TradeValidatorAndroid:null;
+  }
+  function androidNotificationStatus(){
+    const bridge=androidBridge();
+    if(!bridge)return {available:false,notificationPermission:false,exactAlarmPermission:false,scheduledCount:0};
+    try{return Object.assign({available:true,notificationPermission:false,exactAlarmPermission:false,scheduledCount:0},JSON.parse(bridge.getNotificationStatus()));}
+    catch(error){console.warn("État Android indisponible",error);return {available:true,notificationPermission:false,exactAlarmPermission:false,scheduledCount:0};}
+  }
+  function upcomingToiAlerts(now=new Date()){
+    const p=newYorkParts(now),lead=app.settings.toiLeadMinutes,alerts=[],selected=new Set(app.settings.toiAlertWindows||[]);
+    const firstDate=new Date(Date.UTC(p.year,p.month-1,p.day)),calendarEnd=new Date(NQ_CALENDAR.through+"T00:00:00Z");
+    const horizonDays=Math.max(0,Math.min(500,Math.ceil((calendarEnd-firstDate)/86400000)));
+    for(let offset=0;offset<=horizonDays;offset++){
+      const date=new Date(Date.UTC(p.year,p.month-1,p.day+offset)),schedule=marketDay(date),day=date.getUTCDay();
+      if(!schedule.covered)continue;
+      REFERENCE_WINDOWS.forEach(session=>{
+        if(!session.days.includes(day))return;
+        session.windows.forEach((window,windowIndex)=>schedule.hours.forEach(([open,close])=>{
+          const windowId=toiWindowId(session,windowIndex);if(!selected.has(windowId))return;
+          const start=Math.max(window[0],open),end=Math.min(window[1],close);
+          if(start>=end)return;
+          const startAt=newYorkInstant(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate(),start);
+          const endAt=newYorkInstant(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate(),end);
+          const alertAt=startAt-lead*60000;
+          if(alertAt<=now.getTime()+5000)return;
+          const star=session.preferred?"★ ":"";
+          alerts.push({
+            id:"toi-"+startAt+"-"+windowId,at:alertAt,startAt:startAt,endAt:endAt,
+            title:"TOI dans "+lead+" min — "+star+session.name,
+            body:parisRange(startAt,endAt)
+          });
+        }));
+      });
+    }
+    return alerts.sort((a,b)=>a.at-b.at);
+  }
+  function syncAndroidToiNotifications(announce){
+    const bridge=androidBridge();if(!bridge)return {available:false};
+    try{
+      if(!app.settings.toiNotifications){bridge.cancelToiNotifications();return {available:true,scheduledCount:0};}
+      const result=JSON.parse(bridge.scheduleToiNotifications(JSON.stringify({version:1,generatedAt:Date.now(),alerts:upcomingToiAlerts()})));
+      if(announce)showToast(result.scheduledCount+" alerte"+(result.scheduledCount>1?"s":"")+" TOI programmée"+(result.scheduledCount>1?"s":"")+".");
+      return result;
+    }catch(error){console.warn("Programmation Android impossible",error);if(announce)showToast("Impossible de programmer les alertes Android.");return {available:true,error:true};}
   }
   function isIosDevice(){
     return /iphone|ipad|ipod/i.test(navigator.userAgent||"")||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
@@ -956,6 +1016,26 @@
     simpleSettings.append(makeSettingSwitch("Vibrations","Retour haptique si l’appareil le permet.","haptics",app.settings.haptics));
     const versionCard=node("div","utility-card");versionCard.append(node("div","utility-title","Version "+APP_VERSION),node("div","utility-copy","Données sauvegardées automatiquement sur cet appareil · "+(navigator.onLine!==false?"en ligne":"hors ligne")));simpleSettings.append(versionCard);frag.append(simpleSettings);
 
+    const notificationGroup=node("section","cfg-group"),notificationStatus=androidNotificationStatus();
+    notificationGroup.append(cfgHeading("Notifications TOI","Android renouvelle automatiquement les alarmes chaque jour à partir du calendrier disponible."));
+    if(notificationStatus.available){
+      notificationGroup.append(makeSettingSwitch("Alertes TOI","Notification locale avant le début de chaque fenêtre.","toiNotifications",app.settings.toiNotifications));
+      notificationGroup.append(makeSettingSelect("Prévenir avant","Délai appliqué à toutes les prochaines fenêtres.","toiLeadMinutes",app.settings.toiLeadMinutes,[5,10,15,30].map(value=>({value:value,label:value+" min"}))));
+      notificationGroup.append(node("div","setting-title","TOI à notifier"),node("div","setting-sub","Active uniquement les créneaux pour lesquels tu veux recevoir une alerte."),renderToiAlertOptions());
+      const notificationCard=node("div","utility-card"),ready=notificationStatus.notificationPermission&&notificationStatus.exactAlarmPermission;
+      notificationCard.append(node("div","utility-title","Autorisations Android"));
+      const statusText=!notificationStatus.notificationPermission?"● Notifications à autoriser":!notificationStatus.exactAlarmPermission?"● Alarmes exactes à autoriser":"● Prêtes · "+notificationStatus.scheduledCount+" programmée"+(notificationStatus.scheduledCount>1?"s":"");
+      notificationCard.append(node("div","utility-status "+(ready?"ready":"warn"),statusText));
+      notificationCard.append(node("div","utility-copy",ready?"Les alertes fonctionneront même si Trade Validator est fermé.":"Android doit autoriser les notifications et les alarmes exactes pour garantir le délai choisi."));
+      if(!notificationStatus.notificationPermission)notificationCard.append(setAction(makeButton("secondary-btn","Autoriser les notifications"),"notification-permission"));
+      if(!notificationStatus.exactAlarmPermission)notificationCard.append(setAction(makeButton("secondary-btn","Autoriser les alarmes exactes"),"notification-exact"));
+      notificationCard.append(setAction(makeButton("secondary-btn","Envoyer une notification de test"),"notification-test"));
+      notificationGroup.append(notificationCard);
+    }else{
+      const unavailable=node("div","utility-card");unavailable.append(node("div","utility-title","Fonction disponible dans l’APK Android"),node("div","utility-copy","La version installée depuis le navigateur ne peut pas garantir une alerte lorsque l’application est fermée."));notificationGroup.append(unavailable);
+    }
+    frag.append(notificationGroup);
+
     const simpleBackup=node("section","cfg-group");simpleBackup.append(cfgHeading("Sauvegarde & transfert","La sauvegarde contient uniquement les réglages et la session en cours. Rien n’est envoyé en ligne."));
     simpleBackup.append(setAction(makeButton("secondary-btn","Exporter / partager une sauvegarde"),"backup-export"),setAction(makeButton("secondary-btn","Importer une sauvegarde"),"backup-import"));
     const simpleFileInput=node("input","sr-only");simpleFileInput.type="file";simpleFileInput.id="backup-import-file";simpleFileInput.accept=".json,application/json";simpleBackup.append(simpleFileInput);frag.append(simpleBackup);
@@ -965,7 +1045,7 @@
     simpleInstallCard.append(node("div","utility-title","Mode application"));
     simpleInstallCard.append(node("div","utility-status "+(standaloneNow||secureNow&&swAvailable?"ready":"warn"),standaloneNow?"● Installée":secureNow&&swAvailable?"● Prête à installer":"● Adresse non compatible"));
     simpleInstallCard.append(node("div","utility-copy",standaloneNow?"L’application fonctionne déjà sans barre de navigateur.":secureNow?"Android peut proposer l’installation directement. Sur iPhone, utilise le menu Partager de Safari.":"Utilise localhost / 127.0.0.1 ou HTTPS pour activer l’installation et le hors-ligne."));
-    const simpleInstallButton=setAction(makeButton("secondary-btn",standaloneNow?"Application déjà installée":"Installer sur l’écran d’accueil"),"install-app");simpleInstallButton.disabled=standaloneNow;simpleInstallCard.append(simpleInstallButton);simpleInstall.append(simpleInstallCard);frag.append(simpleInstall);
+    const simpleInstallButton=setAction(makeButton("secondary-btn",standaloneNow?"Application déjà installée":"Installer sur l’écran d’accueil"),"install-app");simpleInstallButton.disabled=standaloneNow;simpleInstallCard.append(simpleInstallButton);simpleInstall.append(simpleInstallCard);if(!notificationStatus.available)frag.append(simpleInstall);
 
     const simpleResets=node("section","cfg-group");simpleResets.append(cfgHeading("Réinitialisation","Une nouvelle session efface les réponses et les incidents actuels. La réinitialisation complète efface aussi les réglages locaux."));
     simpleResets.append(setAction(makeButton("secondary-btn","Nouvelle session"),"reset-current"),setAction(makeButton("danger-btn","Réinitialisation complète"),"full-reset"));frag.append(simpleResets);
@@ -975,6 +1055,24 @@
     const row=node("div","setting-row"),copy=node("div","setting-copy");copy.append(node("div","setting-title",title),node("div","setting-sub",sub));
     const label=node("label","switch"),input=node("input","");input.type="checkbox";input.checked=checked;input.dataset.cfgField="setting-check";input.dataset.setting=key;input.setAttribute("aria-label",title);
     label.append(input,node("span","switch-track"));row.append(copy,label);return row;
+  }
+
+  function makeSettingSelect(title,sub,key,value,options){
+    const row=node("label","setting-row"),copy=node("div","setting-copy"),select=node("select","setting-select");
+    copy.append(node("div","setting-title",title),node("div","setting-sub",sub));
+    select.dataset.cfgField="setting-select";select.dataset.setting=key;select.setAttribute("aria-label",title);
+    options.forEach(option=>{const item=node("option","",option.label);item.value=String(option.value);item.selected=Number(value)===Number(option.value);select.append(item);});
+    row.append(copy,select);return row;
+  }
+
+  function renderToiAlertOptions(){
+    const wrap=node("div","toi-alert-options"),dateParts=newYorkParts(new Date()),selected=new Set(app.settings.toiAlertWindows||[]);
+    REFERENCE_WINDOWS.forEach(session=>session.windows.forEach((window,index)=>{
+      const id=toiWindowId(session,index),label=(session.preferred?"★ ":"")+session.name+" · "+referenceWindowLabel(window,"Europe/Paris",dateParts);
+      const button=setAction(makeButton("toi-alert-option",label,"Activer ou désactiver l’alerte "+label),"notification-window",id);
+      button.setAttribute("aria-pressed",String(selected.has(id)));wrap.append(button);
+    }));
+    return wrap;
   }
 
   function resetCurrentSetup(){
@@ -990,7 +1088,7 @@
     confirmAction("Réinitialisation complète ?","Cette action supprimera la configuration et toutes les sélections locales.",()=>{
       setTimeout(()=>confirmAction("Confirmation définitive","Toutes les données locales de Pre-Trade Validator seront effacées. Cette action est irréversible.",()=>{
         try{[STORAGE_KEY,V6_KEY,V5_KEY,V4_KEY,V3_KEY,V2_KEY,V1_KEY].forEach(key=>localStorage.removeItem(key));}catch(error){console.warn("Effacement local impossible",error);}
-        app=makeFreshApp();saveNow();closeSheet();render();showToast("Application entièrement réinitialisée.");
+        app=makeFreshApp();saveNow();syncAndroidToiNotifications(false);closeSheet();render();showToast("Application entièrement réinitialisée.");
       },"Tout effacer"),60);
     },"Continuer");
   }
@@ -1028,14 +1126,42 @@
       const input=document.getElementById("backup-import-file");if(input){input.value="";input.click();}
     }
     else if(action==="install-app")void requestAppInstall();
+    else if(action==="notification-permission"){
+      const bridge=androidBridge();if(bridge)bridge.requestNotificationPermission();
+    }
+    else if(action==="notification-exact"){
+      const bridge=androidBridge();if(bridge)bridge.requestExactAlarmPermission();
+    }
+    else if(action==="notification-test"){
+      const bridge=androidBridge(),status=androidNotificationStatus();
+      if(!bridge)return;
+      if(!status.notificationPermission){bridge.requestNotificationPermission();showToast("Autorise d’abord les notifications Android.");}
+      else bridge.showTestNotification("Test Trade Validator","Les notifications TOI sont opérationnelles.");
+    }
+    else if(action==="notification-window"){
+      const selected=new Set(app.settings.toiAlertWindows||[]);
+      if(selected.has(target.dataset.id))selected.delete(target.dataset.id);else selected.add(target.dataset.id);
+      app.settings.toiAlertWindows=allToiWindowIds(false).filter(windowId=>selected.has(windowId));
+      saveNow();syncAndroidToiNotifications(true);renderConfig();
+    }
     else if(action==="reset-current")requestResetCurrent();
     else if(action==="full-reset")requestFullReset();
   });
   document.getElementById("sheet-body").addEventListener("change",event=>{
     if(event.target.id==="backup-import-file"){void prepareBackupImport(event.target);return;}
-    if(event.target.dataset.cfgField!=="setting-check"||event.target.dataset.setting!=="haptics")return;
-    app.settings.haptics=event.target.checked;
-    saveNow();render();
+    const field=event.target.dataset.cfgField,key=event.target.dataset.setting;
+    if(field==="setting-check"&&key==="haptics"){
+      app.settings.haptics=event.target.checked;saveNow();render();return;
+    }
+    if(field==="setting-check"&&key==="toiNotifications"){
+      app.settings[key]=event.target.checked;saveNow();
+      if(event.target.checked){const bridge=androidBridge();if(bridge)bridge.requestNotificationPermission();}
+      syncAndroidToiNotifications(true);renderConfig();return;
+    }
+    if(field==="setting-select"&&key==="toiLeadMinutes"){
+      const value=Number(event.target.value);if(![5,10,15,30].includes(value))return;
+      app.settings.toiLeadMinutes=value;saveNow();syncAndroidToiNotifications(true);renderConfig();
+    }
   });
   document.addEventListener("keydown",event=>{
     if(event.key!=="Escape")return;
@@ -1044,6 +1170,8 @@
   window.addEventListener("beforeunload",saveNow);
   window.addEventListener("online",updateConnectionStatus);
   window.addEventListener("offline",updateConnectionStatus);
+  window.addEventListener("android-bridge-ready",()=>{syncAndroidToiNotifications(false);if(activeSheet==="config")renderConfig();});
+  window.addEventListener("android-notification-permission-changed",()=>{syncAndroidToiNotifications(false);if(activeSheet==="config")renderConfig();});
   window.addEventListener("beforeinstallprompt",event=>{
     event.preventDefault();deferredInstallPrompt=event;
   });
@@ -1067,12 +1195,14 @@
   loadApp();
   render();
   updateTiming();
+  syncAndroidToiNotifications(false);
   setInterval(updateTiming,1000);
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)updateTiming();});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){updateTiming();syncAndroidToiNotifications(false);}});
   window.PTV={
     getVerdict:getVerdict,save:saveNow,exportData:()=>clone(app),resetCurrentSetup:resetCurrentSetup,
     migrateV4ToV5:migrateV4ToV5,
-    makeBackup:()=>clone(makeBackupPayload()),validateBackup:raw=>clone(validateBackupRoot(raw)),exportBackup:exportBackup,isStandalone:isStandaloneMode
+    makeBackup:()=>clone(makeBackupPayload()),validateBackup:raw=>clone(validateBackupRoot(raw)),exportBackup:exportBackup,isStandalone:isStandaloneMode,
+    upcomingToiAlerts:()=>clone(upcomingToiAlerts()),syncAndroidToiNotifications:syncAndroidToiNotifications
   };
   </script>
 </body>

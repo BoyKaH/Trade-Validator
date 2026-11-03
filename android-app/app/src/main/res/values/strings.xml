@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Trade Validator</string>
+    <string name="notification_channel_name">Alertes TOI</string>
+    <string name="notification_channel_description">Rappels avant le début des Time Of Interest</string>
+</resources>

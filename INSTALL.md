@@ -139,6 +139,14 @@ Le bandeau supérieur affiche uniquement le statut du NQ et le Time Of Interest.
 
 Le bandeau TOI utilise les fenêtres du tableau « Horaires ». Il indique une fenêtre en cours, une fenêtre proche lorsqu’elle commence dans les quinze prochaines minutes, ou la prochaine fenêtre disponible. Les jours non applicables et les fenêtres situées après une fermeture anticipée du NQ sont ignorés. Cet indicateur reste informatif et n’a aucun effet sur le verdict.
 
+## 12. Version Android et notifications TOI
+
+Le dossier `android-app` contient une application Android légère qui affiche la version GitHub Pages tout en ajoutant des alarmes locales. Aucun serveur de notification ni compte utilisateur n’est nécessaire. Le stockage de l’APK étant séparé de Chrome, exporte d’abord une sauvegarde depuis l’ancienne PWA puis importe-la dans l’APK.
+
+Après un push sur `main`, le workflow GitHub Actions **Construire l’APK Android** fabrique automatiquement `Trade-Validator.apk`. Télécharge l’artefact **Trade-Validator-Android** depuis l’exécution du workflow, extrais-le puis ouvre l’APK sur Android.
+
+Dans les réglages de l’application Android, active **Alertes TOI**, choisis le délai et sélectionne séparément chacun des créneaux à notifier. Autorise ensuite les notifications ainsi que les alarmes exactes. Une notification de test permet de vérifier immédiatement la configuration. Les alarmes sont restaurées après un redémarrage et renouvelées automatiquement chaque jour : aucune reprogrammation manuelle n’est nécessaire.
+
 Le calendrier intégré couvre le 1er janvier 2026 au 2 janvier 2028 inclus. Il tient compte des jours fériés et fermetures anticipées du NQ, de la pause quotidienne et de la pause de 16 h 15 à 16 h 30 à New York. Les horaires 2026 proviennent du [calendrier 2026 NinjaTrader pour les futures sur indices](https://support.ninjatrader.com/s/article/2026-Holiday-Trading-Hours?language=en_US), consulté le 25 octobre 2026. Les dates et indications 2027 proviennent du [calendrier CME Globex](https://www.cmegroup.com/trading-hours.html), consulté le 3 novembre 2026.
 
 CME précise que les horaires de jours fériés sont généralement finalisés environ deux semaines avant la date concernée. L’application affiche donc « horaire prévisionnel » à partir du 4 janvier 2027. Ces horaires devront être contrôlés à mesure de leur publication définitive. Il ne faut pas utiliser les horaires du marché des actions Nasdaq pour le NQ.
