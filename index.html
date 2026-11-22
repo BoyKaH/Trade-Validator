@@ -952,7 +952,7 @@
     }else{
       const steps=node("ol","sync-steps");
       ["Sur github.com, crée un dépôt privé vide nommé Trade-Validator-data.",
-       "Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access : Only select repositories → Trade-Validator-data. Permissions → Contents : Read and write. Choisis l’expiration la plus longue proposée.",
+       "Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access : Only select repositories → Trade-Validator-data. Permissions → Contents : Read and write. Expiration : No expiration.",
        "Copie le jeton et colle-le ci-dessous, sur chaque appareil (téléphone et ordi)."].forEach(text=>steps.append(node("li","",text)));
       card.append(node("div","utility-title","Connecter cet appareil"),steps);
       const mk=(id,label,value,type)=>{const wrap=node("label","field sync-field");wrap.append(node("span","field-label",label));const input=node("input","text-input");input.id=id;input.type=type||"text";input.value=value;input.autocomplete="off";input.spellcheck=false;input.setAttribute("autocapitalize","off");wrap.append(input);return wrap;};
