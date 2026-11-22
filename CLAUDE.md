@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.4.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v19`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.5.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v20`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -20,7 +20,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 ## Données (localStorage)
 
 - Clé actuelle `ptv_v8` (version 8). Migration automatique depuis `ptv_v7` … `ptv_v1` dans `loadApp()`.
-- `app.setups[currentId]` : session en cours. Champs : `traderState`, `criterionStates`, `model` (`tp` | `fpfvg`), `context` (`narrative`, `dol`, `poi`, `toi`, `invalidation`), `toiOverride` / `toiOverrideAt`, `csdObs`, `flags`, `noSetup`, `incidentIds`.
+- `app.setups[currentId]` : session en cours. Champs : `traderState`, `criterionStates`, `context` (`dol`, `poi`, `toi`, `invalidation` ; `narrative` gardé pour les anciennes sessions mais plus affiché depuis 1.5.0), `toiOverride` / `toiOverrideAt`, `csdObs` (type de CSD : `displacement`, `ifvg`, `mss`, `breaker`, `fpfvg`), `flags`, `noSetup`, `incidentIds`. L'ancien champ `model` a été retiré : `model:"fpfvg"` migre en `csdObs.fpfvg`.
 - `app.journal` : entrées `kind: "trade"` ou `"no_trade"`. Un trade stocke `auto` (verdict retrouvé : `category` `ok` | `bad` | `none`), `lossAt`, `exported`, `custom`.
 - `app.journalFields` : champs personnalisés (`text`, `number`, `yesno`, `choice`).
 - `app.verdictLog` : historique horodaté des verdicts avec un `snap` du contexte. Maximum 3000 entrées et 150 jours. Battement toutes les 30 min si l'appli est visible.
@@ -30,16 +30,19 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 ## Logique du validateur
 
 - 4 étapes : `state` (ÉTAT), `context` (CONTEXTE), `setup` (SETUP), `entry` (affichée « CSD »).
-- `getVerdict()` : incidents et pause après perte (`block`), puis questions d'état, champs de contexte obligatoires, TOI du modèle, critères `c_htf_zone` et `c_liquidity_taken`, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
+- `getVerdict()` : incidents et pause après perte (`block`), puis questions d'état, champs de contexte obligatoires (DOL, POI), TOI, critères `c_htf_zone` et `c_liquidity_taken`, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
 - `verdict.warnings` (signaux d'abstention) : **avertissement seulement, ne bloque jamais**.
-- TOI par modèle (`MODELS`) : Time & Price = `REFERENCE_WINDOWS` (XX:45 → XX:15) ; First Presented FVG = 09:30 → 09:45 NY. Correction manuelle valable 60 min.
+- TOI unique (`TOI_CHECK`, `currentToi()`) : `REFERENCE_WINDOWS` (XX:45 → XX:15) + ouverture RTH 09:30 → 09:45 NY. Correction manuelle valable 60 min. Plus de choix « Modèle » : Time & Price est le processus, le First Presented FVG est un type de CSD coché à l'étape 4.
+- Narrative HTF retirée de l'écran à la demande de Pierre (souvent floue en live). La fiche garde l'étape HTF IOF : c'est un choix de Pierre, pas une règle de la formation.
 - Les champs de contexte tapés ne déclenchent pas `render()` (perte du focus) : on passe par `refreshLive()`. `updateTiming()` tourne chaque seconde et re-rend si la signature du verdict change.
 
 ## Journal
 
 - `lookupVerdict(date, heure NY)` retrouve le dernier verdict avant la minute d'entrée. Au-delà de 2 h, la validation est périmée (« Sans validation »). Un avertissement s'affiche si le verdict a changé à ±2 min.
-- Pré-remplissage des champs non modifiés : biais, contexte, SMT, confirmation, plan respecté.
+- Pré-remplissage des champs non modifiés : contexte, SMT, confirmation (d'après le type de CSD coché : 1st presented FVG > MSS > IFVG > CSD), plan respecté. Le biais n'est plus pré-rempli, sauf depuis d'anciens `snap` qui contiennent une narrative.
 - Une perte récente (< 6 h) déclenche la pause et remet à zéro les questions d'état.
+- Onglet Journal → sous-onglets « Trades » / « Dashboard ». Le Dashboard reprend celui de l'Excel (`tradeStats()`, trades avec R et date seulement) : nombre de trades, winrate hors 0 R, expectancy, profit factor, Sharpe par trade (écart-type d'échantillon, non annualisé), RR moyen (gain moyen / perte moyenne), drawdown max depuis 0, pertes consécutives max (un BE remet à zéro) ; courbes R cumulés et drawdown ; filtre début/fin (KPI et courbes seulement) ; calendrier mensuel et bilan des 12 derniers mois sur tous les trades. Vérifié contre l'Excel : mêmes valeurs. Filtres en mémoire (`dashState`), non sauvegardés.
+- Contexte : ordre POI → DOL → TOI → invalidation (choix de Pierre ; la fiche liste DOL avant POI, l'exemple 2 cherche le POI H1 d'abord).
 - Export : **exactement les 14 colonnes de l'Excel de Pierre** (`JOURNAL_COLUMNS`). Les champs personnalisés ne sont pas exportés, sauf demande contraire. « Copier les nouveaux » produit du TSV pour Google Sheets ; « Exporter CSV » produit un CSV avec BOM.
 
 ## Règles de contenu
@@ -57,5 +60,5 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Pistes non faites
 
-- Import des 5 trades déjà présents dans l'Excel.
-- Les notifications Android TOI utilisent encore seulement `REFERENCE_WINDOWS` (pas la fenêtre 09:30 du First Presented FVG).
+- Import des 5 trades de l'Excel : **refusé par Pierre**, ne pas le faire.
+- Les notifications Android TOI utilisent encore seulement `REFERENCE_WINDOWS` (pas la fenêtre d'ouverture 09:30 → 09:45).

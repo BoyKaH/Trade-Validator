@@ -130,7 +130,6 @@
     .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
     .chip{min-height:36px;border:1px solid #3a3a3a;border-radius:999px;background:#141414;color:#b5b5b5;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer}
     .chip[aria-pressed="true"]{border-color:#8a6420;background:#271c08;color:#f0c36a}
-    .model-choice{display:grid;grid-template-columns:1fr 1fr;gap:6px}
     .toi-box{margin-bottom:12px}
     .continue-btn{margin:4px 0 0;color:#eee;border-color:#555}
     .choice-btn[aria-pressed="true"].wait-no{border-color:#8a6420;background:var(--orange-bg);color:#f0c36a}
@@ -152,6 +151,45 @@
     .no-setup-wrap{margin:0 0 8px}
     .no-setup-btn{margin-top:0;font-size:13px}
     .stat-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px}
+    .model-choice{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .journal-tabs{margin-bottom:10px}
+    .dash-filters{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;margin-bottom:8px}
+    .dash-filter{display:grid;gap:4px;min-width:0}.dash-filter .text-input{min-width:0;width:100%}
+    .dash-reset{width:auto;padding:0 12px;min-height:44px}
+    .dash-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media (min-width:600px){.dash-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .dash-card{border:1px solid #2a2a2a;border-radius:12px;background:#141414;padding:12px;margin:10px 0}
+    .dash-card-title{font-size:12px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;color:#bbb;margin-bottom:8px}
+    .dash-plot{position:relative}
+    .dash-chart{display:block;width:100%;height:auto;touch-action:pan-y}
+    .dash-grid{stroke:#262626;stroke-width:1}.dash-zero{stroke:#555;stroke-width:1}
+    .dash-axis{fill:#8a8a8a;font-size:11px;font-variant-numeric:tabular-nums}
+    .dash-chart{max-height:260px}
+    .dash-line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+    .dash-line.green{stroke:var(--green)}.dash-line.red{stroke:var(--red)}
+    .dash-area.red{fill:var(--red);opacity:.16}
+    .dash-cross{stroke:#777;stroke-width:1;stroke-dasharray:3 3}
+    .dash-dot{stroke:#141414;stroke-width:2}.dash-dot.green{fill:var(--green)}.dash-dot.red{fill:var(--red)}
+    .dash-tip{position:absolute;top:0;max-width:150px;font-size:11.5px;line-height:1.3;background:#222;border:1px solid #3a3a3a;border-radius:7px;padding:5px 7px;color:var(--text);pointer-events:none}
+    .dash-cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .dash-cal-head .dash-card-title{margin:0;text-transform:capitalize}
+    .dash-nav{min-width:44px;min-height:40px;border:1px solid #333;border-radius:9px;background:#1b1b1b;color:var(--text);font-size:20px;font-weight:800}
+    .dash-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-top:8px}
+    .dash-cal-dow{font-size:11px;font-weight:800;color:#8a8a8a;text-align:center;padding:2px 0}
+    .dash-cal-cell{min-height:56px;border-radius:7px;background:#181818;padding:4px 3px;text-align:center;min-width:0;overflow:hidden}
+    .dash-cal-cell.empty{background:transparent}
+    .dash-cal-cell.pos{background:var(--green-bg)}.dash-cal-cell.neg{background:var(--red-bg)}.dash-cal-cell.flat{background:#232323}
+    .dash-cal-cell.today{outline:1px solid #666}
+    .dash-cal-day{font-size:11px;color:#9a9a9a;font-weight:700}
+    .dash-cal-r{font-size:11px;font-weight:850;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums}
+    .dash-cal-n{font-size:11px;color:#9a9a9a}
+    .dash-table-wrap{overflow-x:auto}
+    .dash-table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+    .dash-table th{font-size:11px;text-align:right;color:#8a8a8a;font-weight:800;padding:5px 4px;border-bottom:1px solid #2a2a2a;white-space:nowrap}
+    .dash-table td{text-align:right;padding:6px 4px;border-bottom:1px solid #1f1f1f;white-space:nowrap}
+    .dash-table th:first-child,.dash-table td:first-child{text-align:left;text-transform:capitalize}
+    .dash-table td.pos{color:#68d6af}.dash-table td.neg{color:#f08080}
+    .dash-table tr.muted td{color:#666}
     .stat-tile{border:1px solid #2f2f2f;border-radius:11px;background:#141414;padding:10px 6px;text-align:center;min-width:0}
     .stat-tile-label{font-size:11px;font-weight:850;letter-spacing:.04em;text-transform:uppercase;color:#999}
     .stat-tile-value{font-size:20px;font-weight:880;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -256,7 +294,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.4.0";
+  const APP_VERSION = "1.5.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -296,15 +334,16 @@
   function allToiWindowIds(preferredOnly){
     const ids=[];REFERENCE_WINDOWS.forEach(session=>{if(preferredOnly&&!session.preferred)return;session.windows.forEach((window,index)=>ids.push(toiWindowId(session,index)));});return ids;
   }
-  const MODELS = {
-    tp:{id:"tp",short:"Time & Price",windows:REFERENCE_WINDOWS,toiHint:"Début / fin de cycle · XX:45 → XX:15"},
-    fpfvg:{id:"fpfvg",short:"First Presented FVG",windows:[{id:"fpfvg-open",name:"OPEN RTH",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[9*60+30,9*60+45]]}],toiHint:"Ouverture RTH · 09:30 → 09:45 NY"}
+  // Fenêtres vérifiées pour le verdict : cycles XX:45 → XX:15 + ouverture RTH (First Presented FVG).
+  // Les notifications Android et l’écran des fenêtres restent sur REFERENCE_WINDOWS.
+  const TOI_CHECK = {
+    windows:REFERENCE_WINDOWS.concat([{id:"open-rth",name:"OPEN RTH",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[9*60+30,9*60+45]]}]),
+    toiHint:"Début / fin de cycle XX:45 → XX:15 · Open 09:30 → 09:45 NY"
   };
   const CONTEXT_FIELDS = [
-    {id:"narrative",label:"Narrative HTF (IOF)",help:"Sens + scénario retenu.",placeholder:"ex. PDH → PDL",required:true,chips:["PDH → PDL","PDL → PDH","MMSM","MMBM"]},
-    {id:"dol",label:"DOL — ma cible",help:"La liquidité visée par le scénario.",placeholder:"ex. PDL",required:true,chips:["PDH","PDL","London High","London Low","AM High","AM Low","Asian High","Asian Low","Data High","Data Low"]},
     {id:"poi",label:"POI — ma zone de travail",help:"Où je cherche le setup. Une liquidité peut être un POI.",placeholder:"ex. AM High + FVG baissiers",required:true,chips:["FVG H1","Breaker H1","Old PD Array","Opening Price","London High","London Low","AM High","AM Low","Data High","Data Low"]},
-    {id:"toi",label:"TOI — ma fenêtre",help:"La fenêtre du modèle est vérifiée automatiquement ci-dessus.",placeholder:"ex. XX:45 → XX:15",required:false,chips:["XX:45 → XX:15","Open 9:30","Manipulation cycle"]},
+    {id:"dol",label:"DOL — ma cible",help:"La liquidité visée depuis ce POI.",placeholder:"ex. PDL",required:true,chips:["PDH","PDL","London High","London Low","AM High","AM Low","Asian High","Asian Low","Data High","Data Low"]},
+    {id:"toi",label:"TOI — ma fenêtre",help:"La fenêtre est vérifiée automatiquement ci-dessus.",placeholder:"ex. XX:45 → XX:15",required:false,chips:["XX:45 → XX:15","Open 9:30","Manipulation cycle"]},
     {id:"invalidation",label:"Invalidation du scénario",help:"Ce qui me fait arrêter de chercher.",placeholder:"ex. NQ et ES reprennent leurs highs",required:false,chips:[]}
   ];
   const WARNING_FLAGS = [
@@ -316,7 +355,8 @@
     {id:"displacement",label:"Déplacement à travers des imbalances"},
     {id:"ifvg",label:"Imbalance opposée / iFVG"},
     {id:"mss",label:"MSS"},
-    {id:"breaker",label:"Breaker / Mitigation Block"}
+    {id:"breaker",label:"Breaker / Mitigation Block"},
+    {id:"fpfvg",label:"First Presented FVG"}
   ];
   const JOURNAL_COLUMNS = ["ID","Screenshot HTF","Screenshot LTF","Date","Jour","Heure","Sens","Biais HTF","Contexte HTF et Liq","SMT","Confirmation LTF","Résultat en R","Comportement / Psycho","Plan respecté (Oui / Non)"];
   const CONFIRMATION_OPTIONS = ["CSD","MSS","IFVG","Aucune","1st presented FVG inversé","1st presented FVG"];
@@ -506,7 +546,7 @@
       traderState:{moneyTarget:null,clearMind:null,acceptsZero:null},
       noSetup:false,criterionStates:{},
       entryState:null,incidentIds:[],
-      model:"tp",context:{narrative:"",dol:"",poi:"",toi:"",invalidation:""},
+      context:{narrative:"",dol:"",poi:"",toi:"",invalidation:""},
       toiOverride:null,toiOverrideAt:null,csdObs:{},flags:{}
     };
   }
@@ -542,11 +582,14 @@
     // L’ancienne réponse d’exécution était déclarative ; elle n’est plus utilisée.
     setup.entryState=null;
     setup.incidentIds=Array.isArray(raw&&raw.incidentIds)?raw.incidentIds.map(v=>safeText(v,80,"")).filter(Boolean).slice(0,200):[];
-    setup.model=raw&&typeof raw.model==="string"&&MODELS[raw.model]?raw.model:"tp";
     CONTEXT_FIELDS.forEach(field=>setup.context[field.id]=safeText(raw&&raw.context&&raw.context[field.id],300,""));
+    // Narrative retirée de l’écran (v1.5.0) : conservée telle quelle pour les anciennes sessions.
+    setup.context.narrative=safeText(raw&&raw.context&&raw.context.narrative,300,"");
     setup.toiOverride=["yes","no"].includes(raw&&raw.toiOverride)?raw.toiOverride:null;
     setup.toiOverrideAt=setup.toiOverride&&Number.isFinite(Number(raw.toiOverrideAt))?Number(raw.toiOverrideAt):null;
     CSD_OBSERVATIONS.forEach(item=>{if(raw&&raw.csdObs&&raw.csdObs[item.id]===true)setup.csdObs[item.id]=true;});
+    // Ancien choix « Modèle : First Presented FVG » → type de CSD coché.
+    if(raw&&raw.model==="fpfvg")setup.csdObs.fpfvg=true;
     WARNING_FLAGS.forEach(item=>{if(raw&&raw.flags&&raw.flags[item.id]===true)setup.flags[item.id]=true;});
     return setup;
   }
@@ -639,7 +682,7 @@
   function normalizeSnapshot(snap){
     const list=(value,max)=>Array.isArray(value)?value.map(v=>safeText(v,max,"")).filter(Boolean).slice(0,8):[];
     return {
-      model:typeof snap.model==="string"&&MODELS[snap.model]?snap.model:"tp",narrative:safeText(snap.narrative,300,""),dol:safeText(snap.dol,300,""),
+      model:snap.model==="fpfvg"?"fpfvg":"",narrative:safeText(snap.narrative,300,""),dol:safeText(snap.dol,300,""),
       poi:safeText(snap.poi,300,""),toi:safeText(snap.toi,300,""),invalidation:safeText(snap.invalidation,300,""),
       smt:!!snap.smt,liquidity:!!snap.liquidity,csd:!!snap.csd,inToi:!!snap.inToi,obs:list(snap.obs,60),incidents:list(snap.incidents,60),flags:list(snap.flags,200)
     };
@@ -763,8 +806,8 @@
       else if(!value)push("wait","state:"+question.id,"État du trader","Répondre à l’état du trader");
     });
     CONTEXT_FIELDS.forEach(field=>{if(field.required&&!setup.context[field.id].trim())push("wait","context:"+field.id,field.label,field.label+" à écrire");});
-    const modelWindow=modelToi(setup);
-    if(!toiSatisfied(setup,modelWindow))push("wait","context:toi","TOI ("+modelWindow.model.short+")",effectiveToiOverride(setup)==="no"?"Pas encore dans ma TOI":"Hors TOI — "+modelWindow.model.toiHint);
+    const toiWindow=currentToi();
+    if(!toiSatisfied(setup,toiWindow))push("wait","context:toi","TOI",effectiveToiOverride(setup)==="no"?"Pas encore dans ma TOI":"Hors TOI — "+TOI_CHECK.toiHint);
     orderedCriteria("setup","gate").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
     orderedCriteria("entry","trigger").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
 
@@ -921,6 +964,8 @@
   }
   let currentView = "validator";
   let journalDraft = null;
+  let journalTab = "list";
+  const dashState = {from:"",to:"",month:""};
   let copyPayload = null;
   let toiCache = {key:"",value:null};
   function pad2(n){return String(n).padStart(2,"0");}
@@ -937,14 +982,14 @@
     if(!setup.toiOverride||!setup.toiOverrideAt)return null;
     return Date.now()-setup.toiOverrideAt>TOI_OVERRIDE_MINUTES*60000?null:setup.toiOverride;
   }
-  function modelToi(setup){
-    const model=MODELS[setup.model]||MODELS.tp,now=new Date(),key=model.id+"|"+Math.floor(now.getTime()/10000);
+  function currentToi(){
+    const now=new Date(),key="toi|"+Math.floor(now.getTime()/10000);
     if(toiCache.key===key)return toiCache.value;
-    const toi=getTimeOfInterest(now,getTiming(now),model.windows);
-    const value={model:model,inside:!!toi.current,current:toi.current,next:toi.next,label:toi.current?toi.current.name+" "+hm(toi.current.start)+"–"+hm(toi.current.end)+" NY":""};
+    const toi=getTimeOfInterest(now,getTiming(now),TOI_CHECK.windows);
+    const value={inside:!!toi.current,current:toi.current,next:toi.next,label:toi.current?toi.current.name+" "+hm(toi.current.start)+"–"+hm(toi.current.end)+" NY":""};
     toiCache={key:key,value:value};return value;
   }
-  function toiSatisfied(setup,windowInfo){const override=effectiveToiOverride(setup);return override==="yes"||(override!=="no"&&(windowInfo||modelToi(setup)).inside);}
+  function toiSatisfied(setup,windowInfo){const override=effectiveToiOverride(setup);return override==="yes"||(override!=="no"&&(windowInfo||currentToi()).inside);}
   function contextFieldsDone(setup){return CONTEXT_FIELDS.every(field=>!field.required||setup.context[field.id].trim());}
   function lossPause(){
     const minutes=app&&app.settings.lossPauseMinutes;if(!minutes)return null;
@@ -959,9 +1004,9 @@
     return {count:trades.length,be:be,sum:sum,notes:notes};
   }
   function snapshotFor(setup){
-    const windowInfo=modelToi(setup);
+    const windowInfo=currentToi();
     return {
-      model:setup.model,narrative:setup.context.narrative,dol:setup.context.dol,poi:setup.context.poi,
+      model:setup.csdObs.fpfvg?"fpfvg":"",narrative:setup.context.narrative,dol:setup.context.dol,poi:setup.context.poi,
       toi:setup.context.toi||(effectiveToiOverride(setup)==="yes"?"validée à la main":windowInfo.inside?windowInfo.label:""),invalidation:setup.context.invalidation,
       smt:!!setup.criterionStates.c_smt,liquidity:setup.criterionStates.c_liquidity_taken==="yes",csd:setup.criterionStates.c_setup_liquidity==="yes",
       inToi:toiSatisfied(setup,windowInfo),obs:CSD_OBSERVATIONS.filter(item=>setup.csdObs[item.id]).map(item=>item.label),
@@ -997,15 +1042,15 @@
     return {category:category,type:found.type,at:found.at,cause:found.cause,stale:false,note:note,snap:found.snap,sessionId:found.sessionId};
   }
   function phraseParts(setup){
-    const c=setup.context,model=MODELS[setup.model]||MODELS.tp;
-    if(!c.narrative.trim()&&!c.dol.trim()&&!c.poi.trim())return null;
-    const text="Narrative "+(c.narrative.trim()||"à écrire")+". DOL "+(c.dol.trim()||"à écrire")+". Je cherche le CSD"+(setup.model==="fpfvg"?" (First Presented FVG)":"")+" dans "+(c.poi.trim()||"mon POI (à écrire)")+", pendant "+(c.toi.trim()||model.toiHint)+".";
+    const c=setup.context;
+    if(!c.dol.trim()&&!c.poi.trim())return null;
+    const text="Je cherche le CSD dans "+(c.poi.trim()||"mon POI (à écrire)")+", pendant "+(c.toi.trim()||TOI_CHECK.toiHint)+". DOL "+(c.dol.trim()||"à écrire")+".";
     return {text:text,invalidation:c.invalidation.trim()};
   }
   function renderPhraseCard(setup,extraClass){
     const card=node("section","phrase-card"+(extraClass?" "+extraClass:""));card.append(node("div","phrase-card-title","Ma phrase"));
     const parts=phraseParts(setup);
-    if(!parts)card.append(node("div","phrase-card-empty","Écris ta narrative, ton DOL et ton POI : ta phrase s’affichera ici pendant que tu attends le CSD."));
+    if(!parts)card.append(node("div","phrase-card-empty","Écris ton POI et ton DOL : ta phrase s’affichera ici pendant que tu attends le CSD."));
     else{card.append(node("div","phrase-card-text",parts.text));if(parts.invalidation)card.append(node("div","phrase-card-inv","Invalidation : "+parts.invalidation));}
     return card;
   }
@@ -1016,10 +1061,10 @@
     if(guard.count&&!guard.notes.length)container.append(node("div","notice grey",guard.count+" trade"+(guard.count>1?"s":"")+" aujourd’hui · "+fmtR(guard.sum)));
   }
   function renderToiStatus(setup){
-    const windowInfo=modelToi(setup),override=effectiveToiOverride(setup),ok=toiSatisfied(setup,windowInfo);
+    const windowInfo=currentToi(),override=effectiveToiOverride(setup),ok=toiSatisfied(setup,windowInfo);
     const box=node("div","toi-box gate-item"+(ok?" valid":" wait invalid"));
     const auto=windowInfo.inside?"dans "+windowInfo.label:windowInfo.next?"hors TOI · prochaine "+windowInfo.next.name+" "+hm(windowInfo.next.start)+"–"+hm(windowInfo.next.end)+" NY":"hors TOI";
-    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",windowInfo.model.toiHint+" · "+(override?"corrigé à la main (expire après "+TOI_OVERRIDE_MINUTES+" min)":"automatique : "+auto)));
+    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",TOI_CHECK.toiHint+" · "+(override?"corrigé à la main (expire après "+TOI_OVERRIDE_MINUTES+" min)":"automatique : "+auto)));
     const choices=node("div","binary-choice"),current=override||(windowInfo.inside?"yes":"no");
     [["yes","OUI","yes"],["no","PAS ENCORE","wait-no"]].forEach(item=>{
       const button=setAction(makeButton("choice-btn "+item[2],item[1]),"toi-override");button.dataset.value=item[0];
@@ -1029,13 +1074,6 @@
   }
   function renderContextStage(container,setup){
     const stage=stageCard("context",2,"CONTEXTE","Écris ton scénario avant de chercher le CSD.",setup),body=stage.body,off=setup.noSetup;
-    const modelWrap=node("div","field");modelWrap.append(node("span","field-label","Modèle"));
-    const models=node("div","model-choice");
-    Object.values(MODELS).forEach(model=>{
-      const on=setup.model===model.id,button=setAction(makeButton("choice-btn yes",model.short),"set-model",model.id);
-      button.setAttribute("aria-pressed",String(on));button.disabled=off;models.append(button);
-    });
-    modelWrap.append(models);body.append(modelWrap);
     CONTEXT_FIELDS.forEach(field=>{
       if(field.id==="toi")body.append(renderToiStatus(setup));
       const wrap=node("div","field"),inputId="ctx-"+field.id,label=node("label","field-label",field.label+(field.required?"":" · facultatif"));
@@ -1075,10 +1113,10 @@
     warnWrap.append(warnList);stage.body.append(warnWrap);container.append(card);
   }
   function renderEntryStage(container,setup){
-    const stage=stageCard("entry",4,"CSD","Le changement d’orderflow attendu par ton modèle, dans ton POI et ta TOI.",setup),card=stage.card;
+    const stage=stageCard("entry",4,"CSD","Le changement d’orderflow attendu, dans ton POI et ta TOI.",setup),card=stage.card;
     const triggers=orderedCriteria("entry","trigger"),wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Le setup"));
     const list=node("div","gate-list");triggers.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);stage.body.append(wrap);
-    const obs=node("div","subgroup");obs.append(node("div","subgroup-title","Ce que j’observe · facultatif"));
+    const obs=node("div","subgroup");obs.append(node("div","subgroup-title","Type de CSD / ce que j’observe · facultatif"));
     const chips=node("div","chips");
     CSD_OBSERVATIONS.forEach(item=>{const on=!!setup.csdObs[item.id],button=setAction(makeButton("chip",item.label),"toggle-obs",item.id);button.setAttribute("aria-pressed",String(on));button.disabled=setup.noSetup;chips.append(button);});
     obs.append(chips,node("span","field-help","Repères d’observation : leur cumul n’est pas exigé."));stage.body.append(obs);
@@ -1157,8 +1195,124 @@
       return [entry.num||"",entry.shotHtf,entry.shotLtf,parts.length===3?parts[2]+"/"+parts[1]+"/"+parts[0]:"",day,entry.time,entry.sens,entry.biais,entry.contexte,entry.smt,entry.confirmation,r,entry.psycho,entry.plan];
     });
   }
+  // ——— Dashboard (reprend les statistiques de l’onglet Dashboard de l’Excel) ———
+  function fmtNum(value,digits){if(value===null||!Number.isFinite(value))return "—";return value.toFixed(digits===undefined?2:digits).replace(".",",");}
+  function fmtPct(value){return value===null?"—":Math.round(value*100)+" %";}
+  function tradeStats(trades){
+    const rs=trades.map(entry=>entry.r),n=rs.length,wins=rs.filter(r=>r>0),losses=rs.filter(r=>r<0);
+    const sum=rs.reduce((a,b)=>a+b,0),mean=n?sum/n:null,sumWin=wins.reduce((a,b)=>a+b,0),sumLoss=losses.reduce((a,b)=>a+b,0);
+    let sharpe=null;if(n>=2){const variance=rs.reduce((a,r)=>a+(r-mean)*(r-mean),0)/(n-1);if(variance>0)sharpe=mean/Math.sqrt(variance);}
+    let cum=0,peak=0,maxDd=0,streak=0,maxStreak=0;const curve=[];
+    trades.forEach(entry=>{
+      cum+=entry.r;peak=Math.max(peak,cum);const dd=cum-peak;maxDd=Math.max(maxDd,-dd);
+      streak=entry.r<0?streak+1:0;maxStreak=Math.max(maxStreak,streak);
+      curve.push({entry:entry,cum:cum,dd:dd});
+    });
+    return {
+      n:n,sum:sum,winrate:wins.length+losses.length?wins.length/(wins.length+losses.length):null,expectancy:mean,
+      profitFactor:losses.length?sumWin/Math.abs(sumLoss):null,pfInfinite:!losses.length&&wins.length>0,sharpe:sharpe,
+      rr:wins.length&&losses.length?(sumWin/wins.length)/(Math.abs(sumLoss)/losses.length):null,maxDd:maxDd,maxStreak:maxStreak,curve:curve
+    };
+  }
+  function ratedTrades(){return sortedTrades().filter(entry=>entry.r!==null&&entry.date);}
+  function monthKey(date){return date.slice(0,7);}
+  function shiftMonth(key,delta){const p=key.split("-").map(Number),d=new Date(Date.UTC(p[0],p[1]-1+delta,1));return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0");}
+  const MONTH_NAMES=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  function monthLabel(key){const p=key.split("-");return MONTH_NAMES[Number(p[1])-1]+" "+p[0];}
+  function svgEl(tag,attrs){const el=document.createElementNS("http://www.w3.org/2000/svg",tag);Object.keys(attrs||{}).forEach(k=>el.setAttribute(k,attrs[k]));return el;}
+  function renderCurveChart(title,curve,key,tone,description){
+    const box=node("section","dash-card");box.append(node("div","dash-card-title",title));
+    if(!curve.length){box.append(node("p","empty-copy","Aucun trade sur la période."));return box;}
+    const values=[0].concat(curve.map(point=>point[key])),W=360,H=170,L=30,R=8,T=10,B=22;
+    let min=Math.min(0,...values),max=Math.max(0,...values);if(max===min){max+=1;min-=key==="dd"?1:0;}
+    const pad=(max-min)*0.08;max+=key==="dd"?0:pad;min-=pad;
+    const x=i=>L+(values.length===1?0:i*(W-L-R)/(values.length-1)),y=v=>T+(max-v)*(H-T-B)/(max-min);
+    const svg=svgEl("svg",{viewBox:"0 0 "+W+" "+H,class:"dash-chart",role:"img","aria-label":description});
+    const step=niceStep((max-min)/4);
+    for(let v=Math.ceil(min/step)*step;v<=max+1e-9;v+=step){
+      const yy=y(v);svg.append(svgEl("line",{x1:L,x2:W-R,y1:yy,y2:yy,class:Math.abs(v)<1e-9?"dash-zero":"dash-grid"}));
+      const label=svgEl("text",{x:L-6,y:yy+4,class:"dash-axis","text-anchor":"end"});label.textContent=fmtNum(v,Math.abs(step)<1?1:0);svg.append(label);
+    }
+    const pts=values.map((v,i)=>x(i)+","+y(v)).join(" ");
+    if(key==="dd")svg.append(svgEl("polygon",{points:x(0)+","+y(0)+" "+pts+" "+x(values.length-1)+","+y(0),class:"dash-area "+tone}));
+    svg.append(svgEl("polyline",{points:pts,class:"dash-line "+tone}));
+    const lastLabel=svgEl("text",{x:x(0),y:H-6,class:"dash-axis"});lastLabel.textContent="Départ";svg.append(lastLabel);
+    const endLabel=svgEl("text",{x:W-R,y:H-6,class:"dash-axis","text-anchor":"end"});endLabel.textContent="Trade "+curve.length;svg.append(endLabel);
+    const cross=svgEl("line",{y1:T,y2:H-B,class:"dash-cross"}),dot=svgEl("circle",{r:5,class:"dash-dot "+tone});cross.style.display=dot.style.display="none";
+    svg.append(cross,dot);
+    const tip=node("div","dash-tip");tip.hidden=true;
+    const hide=()=>{cross.style.display=dot.style.display="none";tip.hidden=true;};
+    svg.addEventListener("pointermove",event=>{
+      const rect=svg.getBoundingClientRect(),px=(event.clientX-rect.left)*W/rect.width;
+      const i=Math.max(0,Math.min(values.length-1,Math.round((px-L)/((W-L-R)/Math.max(1,values.length-1)))));
+      cross.setAttribute("x1",x(i));cross.setAttribute("x2",x(i));dot.setAttribute("cx",x(i));dot.setAttribute("cy",y(values[i]));cross.style.display=dot.style.display="";
+      const point=i?curve[i-1]:null;
+      tip.textContent=point?"#"+(point.entry.num||"–")+" · "+fmtDate(point.entry.date)+" · "+fmtR(point.entry.r)+" → "+(key==="dd"?"drawdown ":"cumul ")+fmtR(values[i]):"Départ · 0 R";
+      tip.hidden=false;tip.style.left=Math.min(Math.max(0,(x(i)/W)*rect.width-70),rect.width-150)+"px";
+    });
+    svg.addEventListener("pointerleave",hide);
+    const plot=node("div","dash-plot");plot.append(svg,tip);box.append(plot);return box;
+  }
+  function niceStep(raw){const p=Math.pow(10,Math.floor(Math.log10(raw||1))),f=raw/p;return (f<=1.5?1:f<=3?2:f<=7?5:10)*p;}
+  function renderDashboard(wrap){
+    const all=ratedTrades(),from=dashState.from,to=dashState.to;
+    const filtered=all.filter(entry=>(!from||entry.date>=from)&&(!to||entry.date<=to)),s=tradeStats(filtered);
+    const filters=node("div","dash-filters");
+    [["from","Début analyse",from],["to","Fin analyse",to]].forEach(([key,label,value])=>{
+      const field=node("label","dash-filter");field.append(node("span","field-label",label));
+      const input=node("input","text-input");input.type="date";input.value=value;input.dataset.dash=key;field.append(input);filters.append(field);
+    });
+    const reset=setAction(makeButton("secondary-btn dash-reset","Tout"),"dash-reset");reset.disabled=!from&&!to;filters.append(reset);
+    wrap.append(filters);
+    const missing=sortedTrades().length-all.length;
+    if(missing)wrap.append(node("p","journal-summary",missing+" trade"+(missing>1?"s":"")+" sans résultat en R ou sans date : non compté"+(missing>1?"s":"")+"."));
+    const kpis=node("div","stat-tiles dash-kpis");
+    [["Nombre de trades",String(s.n)],["Winrate",fmtPct(s.winrate)],["Expectancy",s.expectancy===null?"—":fmtR(s.expectancy)],["Profit factor",s.pfInfinite?"∞":fmtNum(s.profitFactor)],
+     ["Sharpe par trade",fmtNum(s.sharpe)],["RR moyen",fmtNum(s.rr)],["Drawdown max",s.n?fmtNum(s.maxDd)+" R":"—"],["Pertes consécutives max",String(s.maxStreak)]]
+      .forEach(([label,value])=>{const tile=node("div","stat-tile");tile.append(node("div","stat-tile-label",label),node("div","stat-tile-value",value));kpis.append(tile);});
+    wrap.append(kpis,node("p","journal-summary","Winrate hors 0 R. Sharpe non annualisé. RR moyen = gain moyen / perte moyenne. Total : "+(s.n?fmtR(s.sum):"0 R")+"."));
+    wrap.append(renderCurveChart("R cumulés",s.curve,"cum","green","Courbe des R cumulés, trade par trade"));
+    wrap.append(renderCurveChart("Drawdown (R)",s.curve,"dd","red","Drawdown en R depuis le plus haut"));
+    wrap.append(renderCalendar(all),renderMonthTable(all));
+  }
+  function renderCalendar(all){
+    const today=ymd(newYorkParts(new Date())),month=dashState.month||monthKey(today),box=node("section","dash-card");
+    const head=node("div","dash-cal-head");
+    head.append(setAction(makeButton("dash-nav","‹","Mois précédent"),"dash-month","-1"),node("div","dash-card-title",monthLabel(month)),setAction(makeButton("dash-nav","›","Mois suivant"),"dash-month","1"));
+    box.append(head);
+    const days={};all.filter(entry=>monthKey(entry.date)===month).forEach(entry=>{const d=days[entry.date]||(days[entry.date]={r:0,n:0});d.r+=entry.r;d.n++;});
+    const grid=node("div","dash-cal");["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"].forEach(d=>grid.append(node("div","dash-cal-dow",d)));
+    const p=month.split("-").map(Number),first=new Date(Date.UTC(p[0],p[1]-1,1)),count=new Date(Date.UTC(p[0],p[1],0)).getUTCDate();
+    for(let i=0;i<(first.getUTCDay()+6)%7;i++)grid.append(node("div","dash-cal-cell empty"));
+    let monthR=0,monthN=0;
+    for(let day=1;day<=count;day++){
+      const key=month+"-"+String(day).padStart(2,"0"),d=days[key],cell=node("div","dash-cal-cell"+(d?(d.r>0?" pos":d.r<0?" neg":" flat"):"")+(key===today?" today":""));
+      cell.append(node("div","dash-cal-day",String(day)));
+      if(d){monthR+=d.r;monthN+=d.n;cell.append(node("div","dash-cal-r",fmtR(d.r)),node("div","dash-cal-n",d.n+" trade"+(d.n>1?"s":"")));cell.title=fmtR(d.r)+" · "+d.n+" trade"+(d.n>1?"s":"");}
+      grid.append(cell);
+    }
+    box.append(grid,node("p","journal-summary","Bilan du mois : "+fmtR(monthR)+" · "+monthN+" trade"+(monthN>1?"s":"")+". Calendrier sur tous les trades (sans filtre de dates)."));
+    return box;
+  }
+  function renderMonthTable(all){
+    const box=node("section","dash-card");box.append(node("div","dash-card-title","Bilan mensuel · 12 derniers mois"));
+    const table=node("table","dash-table"),head=node("tr");["Mois","Trades","R total","Winrate","Expectancy","Drawdown"].forEach(h=>head.append(node("th","",h)));
+    const thead=node("thead");thead.append(head);const tbody=node("tbody");
+    const current=monthKey(ymd(newYorkParts(new Date())));
+    for(let i=0;i<12;i++){
+      const key=shiftMonth(current,-i),s=tradeStats(all.filter(entry=>monthKey(entry.date)===key)),row=node("tr");
+      const cells=[monthLabel(key),String(s.n),s.n?fmtR(s.sum):"—",fmtPct(s.winrate),s.expectancy===null?"—":fmtR(s.expectancy),s.n?fmtNum(s.maxDd)+" R":"—"];
+      cells.forEach((text,j)=>{const td=node("td",j===2&&s.n?(s.sum>0?"pos":s.sum<0?"neg":""):"",text);row.append(td);});
+      if(!s.n)row.className="muted";tbody.append(row);
+    }
+    table.append(thead,tbody);const scroller=node("div","dash-table-wrap");scroller.append(table);box.append(scroller);return box;
+  }
   function renderJournal(frag){
     const wrap=node("div","journal-view");renderDayNotices(wrap);
+    const tabs=node("div","model-choice journal-tabs");
+    [["list","Trades"],["dash","Dashboard"]].forEach(([id,label])=>{const b=setAction(makeButton("choice-btn yes",label),"journal-tab",id);b.setAttribute("aria-pressed",String(journalTab===id));tabs.append(b);});
+    wrap.append(tabs);
+    if(journalTab==="dash"){renderDashboard(wrap);frag.append(wrap);return;}
     const stats=journalStats(),tiles=node("div","stat-tiles");
     [["ok","Conformes"],["bad","Hors process"],["none","Sans validation"]].forEach(([key,label])=>{
       const group=stats.groups[key],tile=node("div","stat-tile "+key);
@@ -1208,7 +1362,8 @@
       fill("biais",s.narrative);
       fill("contexte",[s.dol&&"DOL : "+s.dol,s.poi&&"POI : "+s.poi,s.toi&&"TOI : "+s.toi,s.liquidity&&"Liquidité prise",s.invalidation&&"Invalidation : "+s.invalidation].filter(Boolean).join(" · "));
       fill("smt",s.smt?"Oui":"Non");
-      fill("confirmation",s.model==="fpfvg"?"1st presented FVG":s.csd?"CSD":"Aucune");
+      const obs=Array.isArray(s.obs)?s.obs:[],has=id=>{const item=CSD_OBSERVATIONS.find(o=>o.id===id);return !!item&&obs.includes(item.label);};
+      fill("confirmation",s.model==="fpfvg"||has("fpfvg")?"1st presented FVG":has("mss")?"MSS":has("ifvg")?"IFVG":s.csd?"CSD":"Aucune");
     }
     fill("plan",lookup.category==="ok"?"Oui":lookup.category==="bad"?"Non":"");
   }
@@ -1452,10 +1607,6 @@
     app.journal.push(normalizeJournalEntry({id:uniqueId("j"),kind:"no_trade",createdAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setup.sessionId,summary:parts?parts.text:"Aucun contexte écrit."},0));
     saveNow();expandedStage="context";render();haptic([12,30,12]);showToast("Pas de setup : ne pas trader est une bonne décision.");
   }
-  function setModel(id){
-    const setup=setupFor();if(setup.noSetup||!MODELS[id])return;
-    setup.model=id;setup.toiOverride=null;setup.toiOverrideAt=null;scheduleSave();expandedStage="context";render();haptic(8);
-  }
   function applyContextChip(fieldId,value){
     const setup=setupFor();if(setup.noSetup||!CONTEXT_FIELDS.some(field=>field.id===fieldId)||!value)return;
     const parts=setup.context[fieldId].split(" + ").map(v=>v.trim()).filter(Boolean);
@@ -1464,7 +1615,7 @@
   }
   function setToiOverride(value){
     const setup=setupFor();if(setup.noSetup||!["yes","no"].includes(value))return;
-    const current=effectiveToiOverride(setup),auto=modelToi(setup).inside?"yes":"no";
+    const current=effectiveToiOverride(setup),auto=currentToi().inside?"yes":"no";
     if(current===value){setup.toiOverride=null;setup.toiOverrideAt=null;}
     else if(!current&&auto===value)return;
     else if(value===auto){setup.toiOverride=null;setup.toiOverrideAt=null;}
@@ -1745,7 +1896,7 @@
   function resetCurrentSetup(){
     const old=setupFor();
     app.incidents=app.incidents.filter(incident=>incident.sessionId!==old.sessionId);
-    const fresh=blankSetup("");fresh.model=old.model;app.setups[app.currentId]=fresh;saveNow();render();
+    const fresh=blankSetup("");app.setups[app.currentId]=fresh;saveNow();render();
     if(activeSheet==="config")renderConfig();showToast("Nouvelle session prête.");haptic([14,30,14]);
   }
   function requestResetCurrent(){
@@ -1774,7 +1925,6 @@
     else if(action==="criterion-answer")setCriterionAnswer(id,value);
     else if(action==="criterion-toggle")toggleCriterion(id);
     else if(action==="no-setup")chooseNoSetup();
-    else if(action==="set-model")setModel(id);
     else if(action==="context-chip")applyContextChip(id,value);
     else if(action==="toi-override")setToiOverride(value);
     else if(action==="toggle-flag")toggleSetupFlag("flags",id,"setup");
@@ -1785,6 +1935,9 @@
     else if(action==="journal-copy")void copyNewTrades();
     else if(action==="journal-csv")void exportJournalCsv();
     else if(action==="journal-fields")openSheet("journal-fields");
+    else if(action==="journal-tab"){journalTab=id==="dash"?"dash":"list";render();haptic(6);}
+    else if(action==="dash-reset"){dashState.from="";dashState.to="";render();}
+    else if(action==="dash-month"){dashState.month=shiftMonth(dashState.month||monthKey(ymd(newYorkParts(new Date()))),Number(id)||0);render();haptic(6);}
   });
   document.getElementById("main-content").addEventListener("input",event=>{
     const target=event.target,key=target.dataset&&target.dataset.contextField;if(!key)return;
@@ -1794,6 +1947,8 @@
   });
   document.getElementById("main-content").addEventListener("change",event=>{
     if(event.target.dataset&&event.target.dataset.contextField){const setup=setupFor();logVerdict(setup,getVerdict(setup),false);}
+    const dashKey=event.target.dataset&&event.target.dataset.dash;
+    if(dashKey==="from"||dashKey==="to"){const v=String(event.target.value||"");dashState[dashKey]=/^\d{4}-\d{2}-\d{2}$/.test(v)?v:"";render();}
   });
   document.getElementById("main-content").addEventListener("keydown",event=>{
     if(event.key==="Enter"&&event.target.dataset&&event.target.dataset.contextField){event.preventDefault();event.target.blur();}
