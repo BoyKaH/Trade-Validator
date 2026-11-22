@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.7.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v23`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.8.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v24`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -20,7 +20,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 ## Données (localStorage)
 
 - Clé actuelle `ptv_v8` (version 8). Migration automatique depuis `ptv_v7` … `ptv_v1` dans `loadApp()`.
-- `app.setups[currentId]` : session en cours. Champs : `traderState`, `criterionStates`, `context` (`poi`, `dol`, `invalidation` ; `narrative` et `toi` gardés pour les anciennes sessions mais plus affichés depuis 1.5.0 / 1.6.0), `toiOverride` / `toiOverrideAt`, `csdObs` (type de CSD : `displacement`, `ifvg`, `mss`, `breaker`, `fpfvg`), `flags`, `noSetup`, `incidentIds`. L'ancien champ `model` a été retiré : `model:"fpfvg"` migre en `csdObs.fpfvg`.
+- `app.setups[currentId]` : session en cours. Champs : `traderState` (`identity` seulement depuis 1.8.0 ; les anciennes réponses `moneyTarget` / `clearMind` / `acceptsZero` sont ignorées à la migration), `criterionStates`, `context` (`poi`, `dol`, `invalidation` ; `narrative` et `toi` gardés pour les anciennes sessions mais plus affichés depuis 1.5.0 / 1.6.0), `toiOverride` / `toiOverrideAt`, `csdObs` (type de CSD : `displacement`, `ifvg`, `mss`, `breaker`, `fpfvg`), `flags`, `noSetup`, `incidentIds`. L'ancien champ `model` a été retiré : `model:"fpfvg"` migre en `csdObs.fpfvg`.
 - `app.journal` : entrées `kind: "trade"` ou `"no_trade"`. Un trade stocke `auto` (verdict retrouvé : `category` `ok` | `bad` | `none`), `lossAt`, `exported`, `custom`.
 - `app.journalFields` : champs personnalisés (`text`, `number`, `yesno`, `choice`).
 - `app.verdictLog` : historique horodaté des verdicts avec un `snap` du contexte. Maximum 3000 entrées et 150 jours. Battement toutes les 30 min si l'appli est visible.
@@ -39,8 +39,9 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Logique du validateur
 
-- 4 étapes : `state` (ÉTAT), `context` (CONTEXTE), `setup` (SETUP), `entry` (affichée « CSD »).
-- `getVerdict()` : incidents et pause après perte (`block`), puis questions d'état, champs de contexte obligatoires (POI, DOL), critères `c_htf_zone` et `c_liquidity_taken`, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
+- 4 étapes, dans cet ordre depuis 1.8.0 : `context` (1 CONTEXTE), `setup` (2 SETUP), `state` (3 ÉTAT), `entry` (4, affichée « CSD »). ÉTAT est posé juste avant le CSD ; CONTEXTE n'est plus verrouillé ; « Pas de setup » est toujours disponible.
+- ÉTAT = une seule question : « Est-ce que cette action est cohérente avec le trader que je suis en train de devenir ? » (NON → incident `identity`, NO GO pour la session). **Garde-fou ajouté** (vidéo Astra Mindset sur discipline et identité), **pas une règle de la formation**. Remise à zéro à chaque session et après une perte.
+- `getVerdict()` : incidents et pause après perte (`block`), puis champs de contexte obligatoires (POI, DOL), critères `c_htf_zone` et `c_liquidity_taken`, puis question d'état, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
 - `verdict.warnings` (signaux d'abstention) : **avertissement seulement, ne bloque jamais**.
 - TOI unique (`TOI_CHECK`, `currentToi()`) : `REFERENCE_WINDOWS` (XX:45 → XX:15) + ouverture RTH 09:30 → 09:45 NY. **Hors TOI = avertissement dans `verdict.warnings`, jamais bloquant** (Pierre : une entrée à XX:40 peut arriver). Correction manuelle valable 60 min. Plus de champ TOI texte : la phrase et le journal reprennent la fenêtre détectée. Plus de choix « Modèle » : Time & Price est le processus, le First Presented FVG est un type de CSD coché à l'étape 4.
 - Narrative HTF retirée de l'écran à la demande de Pierre (souvent floue en live). La fiche garde l'étape HTF IOF : c'est un choix de Pierre, pas une règle de la formation.

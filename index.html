@@ -298,7 +298,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.7.0";
+  const APP_VERSION = "1.8.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -313,12 +313,12 @@
   const BACKUP_FORMAT = "pre-trade-validator-backup";
   const BACKUP_FORMAT_VERSION = 1;
   const MAX_BACKUP_BYTES = 8 * 1024 * 1024;
-  const INCIDENT_TYPES = ["fomo","anticipation","money","clarity"];
+  const INCIDENT_TYPES = ["fomo","anticipation","money","clarity","identity"];
   const INCIDENT_STATUSES = ["active","reevaluated","input_error","abandoned"];
+  // Garde-fou ajouté (vidéo Astra Mindset sur la discipline et l’identité), pas une règle de la formation.
+  // Remplace depuis v1.8.0 les trois questions d’état (récupération / calme / 0 trade).
   const STATE_QUESTIONS = [
-    {id:"moneyTarget",text:"Je cherche à récupérer une perte ou atteindre un montant ?",healthy:"no",cause:"Recherche de récupération / montant",incidentType:"money"},
-    {id:"clearMind",text:"Je suis calme et lucide ?",healthy:"yes",cause:"Manque de clarté mentale",incidentType:"clarity"},
-    {id:"acceptsZero",text:"J’accepte réellement de terminer sans trade ?",healthy:"yes",cause:"0 trade non accepté",incidentType:"clarity"}
+    {id:"identity",text:"Est-ce que cette action est cohérente avec le trader que je suis en train de devenir ?",help:"Pas : « est-ce que j’ai raison sur ce trade ? »",healthy:"yes",cause:"Action incohérente avec le trader que je deviens",incidentType:"identity"}
   ];
   const DEFAULT_CRITERIA = [
     {id:"c_htf_zone",shortTitle:"Prix dans mon POI",description:"Le prix traite dans la zone de travail prévue par le scénario.",section:"setup",subgroup:"gate",type:"boolean",behavior:"wait",systemRole:"core"},
@@ -550,7 +550,7 @@
   function blankSetup(note){
     return {
       sessionId:sessionId(),startedAt:isoNow(),note:safeText(note,8000,""),
-      traderState:{moneyTarget:null,clearMind:null,acceptsZero:null},
+      traderState:{identity:null},
       noSetup:false,criterionStates:{},
       entryState:null,incidentIds:[],
       context:{narrative:"",dol:"",poi:"",toi:"",invalidation:""},
@@ -720,7 +720,7 @@
   function migrateV6ToV7(old){
     const rawSetups=old&&old.setups&&typeof old.setups==="object"?old.setups:{},oldSetup=Object.values(rawSetups)[0]||old&&old.setup||null;
     const data=normalizeApp(old),setup=data.setups[data.currentId];
-    setup.traderState.clearMind=null;
+    setup.traderState.identity=null;
     if(oldSetup&&oldSetup.signature&&oldSetup.signature.confirmed)setup.criterionStates.c_setup_liquidity="yes";
     else setup.criterionStates.c_setup_liquidity=null;
     data.version=7;return data;
@@ -970,7 +970,7 @@
     const s=setup||setupFor();const ids=new Set(s.incidentIds||[]);
     return app.incidents.filter(i=>ids.has(i.id)&&i.sessionId===s.sessionId&&i.status==="active");
   }
-  function incidentLabel(type){return {fomo:"FOMO",anticipation:"Anticipation",money:"Récupération / montant",clarity:"Clarté mentale insuffisante"}[type]||"Impulsivité";}
+  function incidentLabel(type){return {fomo:"FOMO",anticipation:"Anticipation",money:"Récupération / montant",clarity:"Clarté mentale insuffisante",identity:"Action incohérente avec le trader que je deviens"}[type]||"Impulsivité";}
   function criterionProblem(criterion,setup,rank){
     if(setup.criterionStates[criterion.id]==="yes")return null;
     return {severity:"wait",rank:rank,code:"criterion:"+criterion.id,title:criterion.shortTitle,message:criterion.shortTitle};
@@ -994,13 +994,14 @@
     });
     const pause=lossPause();
     if(pause)push("block","pause","Pause après une perte","Pause après une perte — reprise à "+PARIS_TIME_FORMATTER.format(new Date(pause.until)));
+    CONTEXT_FIELDS.forEach(field=>{if(field.required&&!setup.context[field.id].trim())push("wait","context:"+field.id,field.label,field.label+" à écrire");});
+    orderedCriteria("setup","gate").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
+    // ÉTAT : posé après le SETUP, juste avant le CSD.
     STATE_QUESTIONS.forEach(question=>{
       const value=setup.traderState[question.id];
       if(value&&value!==question.healthy)push("block","state:"+question.id,question.cause,question.cause);
-      else if(!value)push("wait","state:"+question.id,"État du trader","Répondre à l’état du trader");
+      else if(!value)push("wait","state:"+question.id,"État","Répondre à la question d’état");
     });
-    CONTEXT_FIELDS.forEach(field=>{if(field.required&&!setup.context[field.id].trim())push("wait","context:"+field.id,field.label,field.label+" à écrire");});
-    orderedCriteria("setup","gate").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
     orderedCriteria("entry","trigger").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
 
     const blocks=problems.filter(p=>p.severity==="block").sort((a,b)=>a.rank-b.rank);
@@ -1061,18 +1062,19 @@
     const toast=document.getElementById("toast");toast.textContent=message;toast.classList.add("show");
     clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),2200);
   }
+  // Ordre des étapes : CONTEXTE → SETUP → ÉTAT → CSD.
   function stageAccessible(stage,setup){
-    if(stage==="state")return true;
-    if(stage==="context")return setup.noSetup||stageStatus("state",setup)==="done";
+    if(stage==="context")return true;
     if(setup.noSetup)return false;
-    if(stage==="setup")return stageStatus("state",setup)==="done"&&contextFieldsDone(setup);
-    return stageStatus("state",setup)==="done"&&contextFieldsDone(setup)&&stageStatus("setup",setup)==="done";
+    if(stage==="setup")return contextFieldsDone(setup);
+    if(stage==="state")return contextFieldsDone(setup)&&stageStatus("setup",setup)==="done";
+    return contextFieldsDone(setup)&&stageStatus("setup",setup)==="done"&&stageStatus("state",setup)==="done";
   }
   function currentStageFor(setup){
     if(setup.noSetup)return "context";
-    if(stageStatus("state",setup)!=="done")return "state";
     if(!contextFieldsDone(setup))return "context";
     if(stageStatus("setup",setup)!=="done")return "setup";
+    if(stageStatus("state",setup)!=="done")return "state";
     return "entry";
   }
   function expandedStageFor(setup){
@@ -1098,7 +1100,7 @@
   }
   function renderProgress(container,setup){
     const progress=node("div","progress");progress.setAttribute("aria-label","Progression du processus");
-    [{stage:"state",n:"1",label:"ÉTAT"},{stage:"context",n:"2",label:"CONTEXTE"},{stage:"setup",n:"3",label:"SETUP"},{stage:"entry",n:"4",label:"CSD"}].forEach(item=>{
+    [{stage:"context",n:"1",label:"CONTEXTE"},{stage:"setup",n:"2",label:"SETUP"},{stage:"state",n:"3",label:"ÉTAT"},{stage:"entry",n:"4",label:"CSD"}].forEach(item=>{
       const status=stageStatus(item.stage,setup),locked=!stageAccessible(item.stage,setup),current=expandedStageFor(setup)===item.stage;
       const box=setAction(makeButton("progress-step "+status+(current?" current":""),"","Ouvrir "+item.label),"stage-jump",item.stage);box.disabled=locked;
       box.append(node("span","progress-num",item.n+" · "+(status==="done"?"✓":status==="stop"?"×":"…")),node("span","progress-label",item.label));
@@ -1115,12 +1117,13 @@
     container.append(banner);
   }
   function renderStateStage(container,setup){
-    const stage=stageCard("state",1,"ÉTAT","Est-ce que j’exécute un plan ou est-ce que je cherche un résultat ?",setup),card=stage.card;
+    const stage=stageCard("state",3,"ÉTAT","La question à me poser juste avant d’entrer.",setup),card=stage.card;
     const list=node("div","question-list");
     STATE_QUESTIONS.forEach(question=>{
       const value=setup.traderState[question.id];
       const validity=value?(value===question.healthy?" valid":" invalid"):"";
       const row=node("div","state-question"+validity);row.append(node("div","question-text",question.text));
+      if(question.help)row.append(node("div","field-help",question.help));
       const choices=node("div","binary-choice");
       ["yes","no"].forEach(answer=>{
         const healthy=answer===question.healthy;
@@ -1268,7 +1271,7 @@
     box.append(choices);return box;
   }
   function renderContextStage(container,setup){
-    const stage=stageCard("context",2,"CONTEXTE","Écris ton scénario avant de chercher le CSD.",setup),body=stage.body,off=setup.noSetup;
+    const stage=stageCard("context",1,"CONTEXTE","Écris ton scénario avant de chercher le CSD.",setup),body=stage.body,off=setup.noSetup;
     CONTEXT_FIELDS.forEach(field=>{
       if(field.id==="invalidation")body.append(renderToiStatus(setup));
       const wrap=node("div","field"),inputId="ctx-"+field.id,label=node("label","field-label",field.label+(field.required?"":" · facultatif"));
@@ -1287,7 +1290,7 @@
     container.append(stage.card);
   }
   function renderSetupStage(container,setup){
-    const stage=stageCard("setup",3,"SETUP","Le prix est dans ma zone et la liquidité attendue est prise.",setup),card=stage.card;
+    const stage=stageCard("setup",2,"SETUP","Le prix est dans ma zone et la liquidité attendue est prise.",setup),card=stage.card;
     const gates=orderedCriteria("setup","gate");
     if(gates.length){
       const wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Validation du setup"));
@@ -1319,15 +1322,15 @@
   }
   function renderNoSetupButton(container,setup){
     const wrap=node("div","no-setup-wrap"),button=setAction(makeButton("no-setup-btn",setup.noSetup?"PAS DE SETUP — ENREGISTRÉ":"PAS DE SETUP — JE NE TRADE PAS"),"no-setup");
-    button.setAttribute("aria-pressed",String(setup.noSetup));button.disabled=!(setup.noSetup||stageStatus("state",setup)==="done");
+    button.setAttribute("aria-pressed",String(setup.noSetup));button.disabled=false;
     wrap.append(button);container.append(wrap);
   }
   function renderValidator(frag,setup){
     const layout=node("div","validator-layout"),col=node("div","process-col"),side=node("aside","side-col");
     renderProgress(col,setup);renderIncidentBanner(col,setup);renderDayNotices(col);
-    renderStateStage(col,setup);renderContextStage(col,setup);renderSetupStage(col,setup);
+    renderContextStage(col,setup);renderSetupStage(col,setup);
     if(!setup.noSetup)col.append(renderPhraseCard(setup,"phrase-inline"));
-    renderEntryStage(col,setup);renderNoSetupButton(col,setup);
+    renderStateStage(col,setup);renderEntryStage(col,setup);renderNoSetupButton(col,setup);
     side.append(renderPhraseCard(setup,"phrase-side"));
     layout.append(col,side);frag.append(layout);
   }
@@ -1636,7 +1639,7 @@
     else{app.journal.push(entry);app.settings.nextTradeNum=(entry.num||app.settings.nextTradeNum)+1;}
     if(pauseStarted){const setup=setupFor();STATE_QUESTIONS.forEach(question=>setup.traderState[question.id]=null);}
     saveNow();closeSheet();render();haptic(10);
-    showToast(pauseStarted?(app.settings.lossPauseMinutes?"Perte enregistrée : pause de "+app.settings.lossPauseMinutes+" min et état du trader à revalider.":"Perte enregistrée : état du trader à revalider."):"Trade enregistré.");
+    showToast(pauseStarted?(app.settings.lossPauseMinutes?"Perte enregistrée : pause de "+app.settings.lossPauseMinutes+" min et question d’état à revalider.":"Perte enregistrée : question d’état à revalider."):"Trade enregistré.");
   }
   function requestDeleteJournal(id){
     const entry=app.journal.find(item=>item.id===id);if(!entry)return;
@@ -1765,7 +1768,7 @@
     });
   }
   function renderStageChange(stage,allowAdvance){
-    const setup=setupFor(),next=stage==="state"?"context":stage==="context"?"setup":stage==="setup"?"entry":null;
+    const setup=setupFor(),next=stage==="context"?"setup":stage==="setup"?"state":stage==="state"?"entry":null;
     const shouldAdvance=!!(allowAdvance&&next&&stageStatus(stage,setup)==="done"&&stageAccessible(next,setup));
     expandedStage=shouldAdvance?next:stage;render();if(shouldAdvance)scrollToStage(next);
   }
