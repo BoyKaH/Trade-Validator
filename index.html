@@ -294,7 +294,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.6.0";
+  const APP_VERSION = "1.6.1";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -348,7 +348,7 @@
   const WARNING_FLAGS = [
     {id:"smtBoth",text:"SMT aux highs ET aux lows, ou HTF contre l’orderflow intraday",hint:"Risque de ping-pong entre liquidités (live du 19/11)."},
     {id:"smtReached",text:"La cible de ma SMT est déjà atteinte",hint:"Une SMT cesse d’être opérationnelle une fois sa liquidité atteinte (19/11)."},
-    {id:"lateEntry",text:"Entrée tardive : ES est déjà loin devant",hint:"Ne pas entrer tard sur NQ si ES est déjà largement en avance (19/11)."}
+    {id:"lateEntry",text:"Continuation sur NQ alors qu’ES est déjà loin devant",hint:"Une continuation sur NQ avec ES déjà beaucoup plus avancé peut être dangereuse, même si elle fonctionne parfois (live du 19/11)."}
   ];
   const CSD_OBSERVATIONS = [
     {id:"displacement",label:"Déplacement à travers des imbalances"},
