@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.6.1"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v22`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.7.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v23`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -25,6 +25,16 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - `app.journalFields` : champs personnalisés (`text`, `number`, `yesno`, `choice`).
 - `app.verdictLog` : historique horodaté des verdicts avec un `snap` du contexte. Maximum 3000 entrées et 150 jours. Battement toutes les 30 min si l'appli est visible.
 - `app.settings` : `lossPauseMinutes` (10), `dailyTargetR` (0 = désactivé), `csvFormat` (`fr` | `std`), `nextTradeNum`, plus les réglages TOI et Android.
+- `app.tombstones` (`journal`, `fields` : id → ms) : suppressions mémorisées 400 jours pour la synchro. Supprimer une entrée du journal via `removeJournalEntries()`, jamais par un simple `filter`.
+
+## Synchronisation (v1.7.0)
+
+- Fichier `journal.json` dans un dépôt GitHub **privé** de Pierre (`BoyKaH/Trade-Validator-data` par défaut), via l'API Contents (`readRemote` / `writeRemote`). Jeton fine-grained limité à ce dépôt, Contents read/write.
+- Réglages de synchro et jeton dans la clé `ptv_sync`, **hors de `app`** : jamais dans les sauvegardes JSON ni dans le fichier synchronisé.
+- Synchronisés : `journal`, `journalFields`, `tombstones`, `verdictLog`, `nextTradeNum`. Non synchronisés : session en cours, incidents, réglages d'appareil.
+- `mergeSyncData()` : fusion par id, `updatedAt` le plus récent gagne ; `exported` et `lossAt` sont conservés d'un côté ou de l'autre. Pas d'écriture si l'empreinte (`canonicalSyncSig`) est identique. Conflit de sha (409/422) → relecture et nouvel essai (3 fois).
+- Déclencheurs : ouverture de l'appli, retour au premier plan ou focus (au plus toutes les 20 s), 3 s après un changement du journal, passage en arrière-plan, retour du réseau, et toutes les 10 min pour l'historique des verdicts.
+- Testé avec un faux GitHub en mémoire, pas encore avec un vrai jeton.
 - Toute nouvelle donnée doit passer par `normalizeApp()` et les fonctions `normalize*()`. La sauvegarde JSON (`validateBackupRoot`) accepte les versions 5 à 8.
 
 ## Logique du validateur

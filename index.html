@@ -152,7 +152,11 @@
     .no-setup-btn{margin-top:0;font-size:13px}
     .stat-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px}
     .model-choice{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-    .journal-tabs{margin-bottom:10px}
+    .journal-tabs{margin-bottom:8px}
+    .sync-line{display:block;width:100%;text-align:left;background:none;border:0;color:#9a9a9a;font-size:12px;padding:2px 2px 8px;min-height:28px}
+    .sync-steps{margin:6px 0 10px;padding-left:20px;font-size:12.5px;line-height:1.45;color:#bdbdbd}
+    .sync-steps li{margin-bottom:5px}
+    .sync-field{margin:8px 0}
     .dash-filters{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;margin-bottom:8px}
     .dash-filter{display:grid;gap:4px;min-width:0}.dash-filter .text-input{min-width:0;width:100%}
     .dash-reset{width:auto;padding:0 12px;min-height:44px}
@@ -294,7 +298,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.6.1";
+  const APP_VERSION = "1.7.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -302,6 +306,10 @@
   const V3_KEY = "ptv_v3";
   const V2_KEY = "ptv_v2";
   const V1_KEY = "ptv_v1";
+  // Réglages de synchro propres à l’appareil (jeton compris) : jamais dans `app`, ni dans les sauvegardes JSON.
+  const SYNC_KEY = "ptv_sync";
+  const SYNC_FORMAT = "ptv-sync";
+  const TOMBSTONE_DAYS = 400;
   const BACKUP_FORMAT = "pre-trade-validator-backup";
   const BACKUP_FORMAT_VERSION = 1;
   const MAX_BACKUP_BYTES = 8 * 1024 * 1024;
@@ -554,7 +562,7 @@
     const data={
       version:8,nextId:1000,instruments:[{id:id,name:"NQ"}],currentId:id,journal:[],journalFields:[],verdictLog:[],
       criteria:clone(DEFAULT_CRITERIA),
-      settings:clone(DEFAULT_SETTINGS),setups:{},incidents:[]
+      settings:clone(DEFAULT_SETTINGS),setups:{},incidents:[],tombstones:{journal:{},fields:{}}
     };
     data.setups[id]=blankSetup("");
     return data;
@@ -639,8 +647,22 @@
     data.journalFields=normalizeJournalFields(raw&&raw.journalFields);
     data.journal=(Array.isArray(raw&&raw.journal)?raw.journal:[]).slice(0,5000).map(normalizeJournalEntry).filter((entry,index,array)=>array.findIndex(v=>v.id===entry.id)===index);
     data.verdictLog=normalizeVerdictLog(raw&&raw.verdictLog);
+    data.tombstones=normalizeTombstones(raw&&raw.tombstones);
     data.version=8;
     return data;
+  }
+  // Suppressions mémorisées pour que la synchro ne fasse pas réapparaître une entrée effacée sur l’autre appareil.
+  function normalizeTombstones(raw){
+    const out={journal:{},fields:{}},limit=Date.now()-TOMBSTONE_DAYS*86400000;
+    ["journal","fields"].forEach(group=>{
+      const src=isPlainObject(raw)&&isPlainObject(raw[group])?raw[group]:{};
+      Object.keys(src).slice(0,20000).forEach(id=>{const at=Number(src[id]);if(Number.isFinite(at)&&at>limit&&/^[\w.-]{1,100}$/.test(id))out[group][id]=at;});
+    });
+    return out;
+  }
+  function removeJournalEntries(predicate){
+    const now=Date.now();
+    app.journal=app.journal.filter(entry=>{if(predicate(entry)){app.tombstones.journal[entry.id]=now;return false;}return true;});
   }
 
   function normalizeJournalFields(raw){
@@ -765,10 +787,181 @@
   }
   function saveNow(){
     if(!app)return false;
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(app));return true;}
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(app));syncAfterLocalSave();return true;}
     catch(error){console.warn("Impossible de sauvegarder les données locales",error);showToast("Sauvegarde locale indisponible");return false;}
   }
   function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,120);}
+
+  // ——— Synchronisation via un fichier JSON dans un dépôt GitHub privé ———
+  // Synchronisé : journal, champs personnalisés, suppressions, historique des verdicts, numéro du prochain trade.
+  // Non synchronisé : session en cours, incidents, réglages de l’appareil (notifications, vibrations…).
+  let syncState={running:false,again:false,timer:null,lastJournalSig:"",lastPushedLogAt:0,lastAttempt:0};
+  function loadSyncConfig(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(SYNC_KEY)||"null");
+      if(!isPlainObject(raw)||!raw.token||!raw.owner||!raw.repo)return null;
+      return {owner:String(raw.owner),repo:String(raw.repo),path:String(raw.path||"journal.json"),token:String(raw.token),
+        lastSyncAt:Number(raw.lastSyncAt)||0,lastError:String(raw.lastError||""),lastSha:String(raw.lastSha||"")};
+    }catch(error){return null;}
+  }
+  function saveSyncConfig(cfg){try{if(cfg)localStorage.setItem(SYNC_KEY,JSON.stringify(cfg));else localStorage.removeItem(SYNC_KEY);}catch(error){console.warn("Réglages de synchro non enregistrés",error);}}
+  function textHash(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36)+":"+text.length;}
+  function journalSignature(){return textHash(JSON.stringify([app.journal,app.journalFields,app.tombstones,app.settings.nextTradeNum]));}
+  function lastLogAt(){return app.verdictLog.length?app.verdictLog[app.verdictLog.length-1].at:0;}
+  function utf8ToBase64(text){const bytes=new TextEncoder().encode(text);let bin="";for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(bin);}
+  function base64ToUtf8(b64){const bin=atob(String(b64).replace(/\s/g,"")),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new TextDecoder().decode(bytes);}
+  function ghContentsUrl(cfg){return "https://api.github.com/repos/"+encodeURIComponent(cfg.owner)+"/"+encodeURIComponent(cfg.repo)+"/contents/"+cfg.path.split("/").map(encodeURIComponent).join("/");}
+  async function ghFetch(cfg,url,options){
+    const opts=options||{},headers=Object.assign({"Authorization":"Bearer "+cfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},opts.headers||{});
+    return fetch(url,Object.assign({},opts,{headers:headers,cache:"no-store"}));
+  }
+  function syncError(status,fallback){
+    if(status===401)return "Jeton refusé ou expiré : crée un nouveau jeton et reconnecte cet appareil.";
+    if(status===403)return "Accès refusé : le jeton doit avoir « Contents : Read and write » sur ce dépôt.";
+    if(status===404)return "Dépôt introuvable : vérifie le nom et que le jeton y a accès.";
+    return fallback||"Synchro impossible (code "+status+").";
+  }
+  async function readRemote(cfg){
+    const response=await ghFetch(cfg,ghContentsUrl(cfg));
+    if(response.status===404){
+      const repo=await ghFetch(cfg,"https://api.github.com/repos/"+encodeURIComponent(cfg.owner)+"/"+encodeURIComponent(cfg.repo));
+      if(repo.ok)return {exists:false,sha:"",data:null};
+      throw new Error(syncError(repo.status));
+    }
+    if(!response.ok)throw new Error(syncError(response.status));
+    const meta=await response.json();let text;
+    if(meta.encoding==="base64"&&meta.content)text=base64ToUtf8(meta.content);
+    else{
+      const raw=await ghFetch(cfg,ghContentsUrl(cfg),{headers:{"Accept":"application/vnd.github.raw+json"}});
+      if(!raw.ok)throw new Error(syncError(raw.status));text=await raw.text();
+    }
+    let data=null;try{data=JSON.parse(text);}catch(error){throw new Error("Le fichier "+cfg.path+" du dépôt n’est pas un JSON lisible.");}
+    if(!isPlainObject(data)||data.format!==SYNC_FORMAT)throw new Error("Le fichier "+cfg.path+" n’est pas une synchro Trade Validator.");
+    return {exists:true,sha:meta.sha,data:data};
+  }
+  async function writeRemote(cfg,payload,sha){
+    const body={message:"Synchro journal "+isoNow(),content:utf8ToBase64(JSON.stringify(payload))};if(sha)body.sha=sha;
+    const response=await ghFetch(cfg,ghContentsUrl(cfg),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(response.status===409||response.status===422)return {conflict:true};
+    if(!response.ok)throw new Error(syncError(response.status));
+    const json=await response.json();return {conflict:false,sha:json&&json.content&&json.content.sha||""};
+  }
+  function entryStamp(entry){return String(entry.updatedAt||entry.createdAt||"");}
+  // Fusion entrée par entrée : la version modifiée en dernier gagne, une suppression plus récente l’emporte.
+  function mergeSyncData(local,remote){
+    const tombstones=normalizeTombstones(local.tombstones),rt=normalizeTombstones(remote&&remote.tombstones);
+    ["journal","fields"].forEach(g=>Object.keys(rt[g]).forEach(id=>{tombstones[g][id]=Math.max(tombstones[g][id]||0,rt[g][id]);}));
+    const byId=new Map();
+    local.journal.forEach(entry=>byId.set(entry.id,entry));
+    (Array.isArray(remote&&remote.journal)?remote.journal:[]).slice(0,5000).map(normalizeJournalEntry).forEach(entry=>{
+      const mine=byId.get(entry.id);
+      if(!mine){byId.set(entry.id,entry);return;}
+      const winner=entryStamp(entry)>entryStamp(mine)?entry:mine,other=winner===entry?mine:entry;
+      if(winner.kind==="trade"&&other.kind==="trade"){winner.exported=winner.exported||other.exported;winner.lossAt=winner.lossAt||other.lossAt;}
+      byId.set(entry.id,winner);
+    });
+    const journal=[...byId.values()].filter(entry=>{const dead=tombstones.journal[entry.id];return !dead||Date.parse(entryStamp(entry))>dead;});
+    const fields=normalizeJournalFields(local.journalFields.concat(normalizeJournalFields(remote&&remote.journalFields))).filter(field=>!tombstones.fields[field.id]);
+    const seen=new Set(),log=[];
+    local.verdictLog.concat(normalizeVerdictLog(remote&&remote.verdictLog)).forEach(e=>{const key=e.at+"|"+e.sessionId+"|"+e.type+"|"+e.sig;if(seen.has(key))return;seen.add(key);log.push(e);});
+    const verdictLog=normalizeVerdictLog(log.sort((a,b)=>a.at-b.at).slice(-VERDICT_LOG_MAX));
+    const maxNum=journal.reduce((m,entry)=>Math.max(m,entry.num||0),0);
+    const nextTradeNum=Math.max(local.nextTradeNum||1,Number(remote&&remote.nextTradeNum)||1,maxNum+1);
+    return {journal:journal,journalFields:fields,tombstones:tombstones,verdictLog:verdictLog,nextTradeNum:nextTradeNum};
+  }
+  // Empreinte indépendante de l’ordre : évite un commit GitHub quand rien n’a changé.
+  function canonicalSyncSig(data){
+    const byId=(a,b)=>a.id<b.id?-1:a.id>b.id?1:0,sortKeys=obj=>Object.keys(obj).sort().map(k=>k+"="+obj[k]).join(",");
+    const journal=(Array.isArray(data.journal)?data.journal:[]).map(normalizeJournalEntry).sort(byId);
+    const fields=normalizeJournalFields(data.journalFields).sort(byId),t=normalizeTombstones(data.tombstones);
+    return textHash(JSON.stringify([journal,fields,sortKeys(t.journal),sortKeys(t.fields),normalizeVerdictLog(data.verdictLog),Number(data.nextTradeNum)||1]));
+  }
+  function syncPayload(merged){return Object.assign({format:SYNC_FORMAT,version:1,savedAt:isoNow(),appVersion:APP_VERSION},merged);}
+  async function syncNow(manual){
+    const cfg=loadSyncConfig();if(!cfg)return false;
+    if(syncState.running){syncState.again=true;return false;}
+    if(navigator.onLine===false){if(manual)showToast("Hors ligne : la synchro reprendra au retour du réseau.");return false;}
+    syncState.running=true;syncState.lastAttempt=Date.now();clearTimeout(syncState.timer);
+    const before=journalSignature();let ok=false;
+    try{
+      for(let attempt=0;attempt<3;attempt++){
+        const remote=await readRemote(cfg);
+        const merged=mergeSyncData({journal:app.journal,journalFields:app.journalFields,tombstones:app.tombstones,verdictLog:app.verdictLog,nextTradeNum:app.settings.nextTradeNum},remote.data);
+        app.journal=merged.journal;app.journalFields=merged.journalFields;app.tombstones=merged.tombstones;app.verdictLog=merged.verdictLog;app.settings.nextTradeNum=merged.nextTradeNum;
+        try{localStorage.setItem(STORAGE_KEY,JSON.stringify(app));}catch(error){console.warn("Sauvegarde locale après synchro impossible",error);}
+        const remoteSig=remote.data?canonicalSyncSig(remote.data):"",mergedSig=canonicalSyncSig(merged);
+        if(remote.exists&&remoteSig===mergedSig){cfg.lastSha=remote.sha;ok=true;break;}
+        const written=await writeRemote(cfg,syncPayload(merged),remote.sha);
+        if(written.conflict)continue;
+        cfg.lastSha=written.sha;ok=true;break;
+      }
+      if(!ok)throw new Error("Conflit répété avec l’autre appareil : réessaie dans un instant.");
+      cfg.lastSyncAt=Date.now();cfg.lastError="";saveSyncConfig(cfg);
+      syncState.lastJournalSig=journalSignature();syncState.lastPushedLogAt=lastLogAt();
+      if(manual)showToast("Journal synchronisé.");
+    }catch(error){
+      console.warn("Synchro GitHub",error);
+      cfg.lastError=error&&error.message&&!/fetch|network/i.test(error.message)?error.message:"Réseau indisponible ou GitHub injoignable.";saveSyncConfig(cfg);
+      if(manual)showToast(cfg.lastError);
+    }finally{
+      syncState.running=false;
+      if(journalSignature()!==before&&currentView==="journal"&&!activeSheet)render();
+      if(activeSheet==="config")renderConfig();
+      if(syncState.again){syncState.again=false;scheduleSync(1500);}
+    }
+    return ok;
+  }
+  function scheduleSync(delay){if(!loadSyncConfig())return;clearTimeout(syncState.timer);syncState.timer=setTimeout(()=>{void syncNow(false);},delay);}
+  function syncAfterLocalSave(){
+    if(syncState.running||!loadSyncConfig())return;
+    if(journalSignature()!==syncState.lastJournalSig)scheduleSync(3000);
+  }
+  function syncIfStale(){
+    if(!loadSyncConfig()||syncState.running)return;
+    if(Date.now()-syncState.lastAttempt<20000)return;
+    void syncNow(false);
+  }
+  function syncLabel(){
+    const cfg=loadSyncConfig();if(!cfg)return "";
+    if(cfg.lastError)return "Synchro en erreur";
+    return cfg.lastSyncAt?"Synchronisé à "+PARIS_TIME_FORMATTER.format(new Date(cfg.lastSyncAt)).slice(0,5):"Synchro en attente";
+  }
+  async function connectSync(){
+    const owner=String((document.getElementById("sync-owner")||{}).value||"").trim(),repo=String((document.getElementById("sync-repo")||{}).value||"").trim();
+    const token=String((document.getElementById("sync-token")||{}).value||"").trim();
+    if(!/^[A-Za-z0-9-]{1,39}$/.test(owner)||!/^[A-Za-z0-9._-]{1,100}$/.test(repo)){showToast("Nom du propriétaire ou du dépôt invalide.");return;}
+    if(token.length<20){showToast("Colle le jeton GitHub complet.");return;}
+    saveSyncConfig({owner:owner,repo:repo,path:"journal.json",token:token,lastSyncAt:0,lastError:"",lastSha:""});
+    renderConfig();showToast("Connexion à GitHub…");
+    const ok=await syncNow(true);
+    if(!ok){const cfg=loadSyncConfig();if(cfg&&!cfg.lastSyncAt){saveSyncConfig(null);renderConfig();showToast((cfg.lastError||"Connexion impossible.")+" Appareil non connecté.");}}
+  }
+  function disconnectSync(){
+    confirmAction("Déconnecter cet appareil ?","Le jeton est effacé de cet appareil. Le journal reste ici et sur GitHub, mais ne se synchronise plus.",()=>{saveSyncConfig(null);renderConfig();if(currentView==="journal")render();showToast("Synchro désactivée sur cet appareil.");},"Déconnecter");
+  }
+  function renderSyncGroup(){
+    const group=node("section","cfg-group"),cfg=loadSyncConfig();
+    group.append(cfgHeading("Synchronisation (GitHub)","Retrouve ton journal sur le téléphone et l’ordi. Les données vont dans un fichier d’un dépôt GitHub privé, à ton nom."));
+    const card=node("div","utility-card");
+    if(cfg){
+      card.append(node("div","utility-title",cfg.owner+"/"+cfg.repo));
+      card.append(node("div","utility-status "+(cfg.lastError?"warn":"ready"),cfg.lastError?"● "+cfg.lastError:cfg.lastSyncAt?"● Synchronisé à "+PARIS_TIME_FORMATTER.format(new Date(cfg.lastSyncAt)):"● En attente de la première synchro"));
+      card.append(node("div","utility-copy","Synchronisé : journal, champs personnalisés, historique des verdicts. Restent sur l’appareil : session en cours, notifications, vibrations."));
+      const now=setAction(makeButton("secondary-btn",syncState.running?"Synchro en cours…":"Synchroniser maintenant"),"sync-now");now.disabled=syncState.running;
+      card.append(now,setAction(makeButton("secondary-btn","Déconnecter cet appareil"),"sync-disconnect"));
+    }else{
+      const steps=node("ol","sync-steps");
+      ["Sur github.com, crée un dépôt privé vide nommé Trade-Validator-data.",
+       "Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access : Only select repositories → Trade-Validator-data. Permissions → Contents : Read and write. Choisis l’expiration la plus longue proposée.",
+       "Copie le jeton et colle-le ci-dessous, sur chaque appareil (téléphone et ordi)."].forEach(text=>steps.append(node("li","",text)));
+      card.append(node("div","utility-title","Connecter cet appareil"),steps);
+      const mk=(id,label,value,type)=>{const wrap=node("label","field sync-field");wrap.append(node("span","field-label",label));const input=node("input","text-input");input.id=id;input.type=type||"text";input.value=value;input.autocomplete="off";input.spellcheck=false;input.setAttribute("autocapitalize","off");wrap.append(input);return wrap;};
+      card.append(mk("sync-owner","Compte GitHub","BoyKaH"),mk("sync-repo","Dépôt privé","Trade-Validator-data"),mk("sync-token","Jeton (fine-grained)","","password"));
+      card.append(node("div","utility-copy","Le jeton reste sur cet appareil et n’est jamais mis dans les sauvegardes. Limite-le à ce seul dépôt."));
+      card.append(setAction(makeButton("primary-btn","Connecter et synchroniser"),"sync-connect"));
+    }
+    group.append(card);return group;
+  }
   function setupFor(){if(!app.setups[app.currentId])app.setups[app.currentId]=blankSetup("");return app.setups[app.currentId];}
   function orderedCriteria(section,subgroup){
     return app.criteria.filter(c=>c.section===section&&(subgroup===undefined||c.subgroup===subgroup));
@@ -1314,6 +1507,8 @@
     const tabs=node("div","model-choice journal-tabs");
     [["list","Trades"],["dash","Dashboard"]].forEach(([id,label])=>{const b=setAction(makeButton("choice-btn yes",label),"journal-tab",id);b.setAttribute("aria-pressed",String(journalTab===id));tabs.append(b);});
     wrap.append(tabs);
+    const syncText=syncLabel();
+    if(syncText){const line=setAction(makeButton("sync-line",(syncText==="Synchro en erreur"?"⚠ ":"⟳ ")+syncText,"Ouvrir les réglages de synchronisation"),"open-config");wrap.append(line);}
     if(journalTab==="dash"){renderDashboard(wrap);frag.append(wrap);return;}
     const stats=journalStats(),tiles=node("div","stat-tiles");
     [["ok","Conformes"],["bad","Hors process"],["none","Sans validation"]].forEach(([key,label])=>{
@@ -1446,7 +1641,7 @@
   function requestDeleteJournal(id){
     const entry=app.journal.find(item=>item.id===id);if(!entry)return;
     const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":"Le trade #"+(entry.num||"")+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
-    confirmAction("Supprimer cette entrée ?",text,()=>{app.journal=app.journal.filter(item=>item.id!==id);saveNow();if(activeSheet)closeSheet();render();showToast("Entrée supprimée.");},"Supprimer");
+    confirmAction("Supprimer cette entrée ?",text,()=>{removeJournalEntries(item=>item.id===id);saveNow();if(activeSheet)closeSheet();render();showToast("Entrée supprimée.");},"Supprimer");
   }
   async function shareOrDownload(blob,filename,mime,title){
     let file=null,canShare=false;
@@ -1482,7 +1677,7 @@
   function markCopied(){
     if(!copyPayload)return;
     const ids=new Set(copyPayload.ids);let count=0;
-    app.journal.forEach(entry=>{if(ids.has(entry.id)){entry.exported=true;count++;}});
+    app.journal.forEach(entry=>{if(ids.has(entry.id)){entry.exported=true;entry.updatedAt=isoNow();count++;}});
     copyPayload=null;saveNow();if(activeSheet)closeSheet();render();
     showToast(count+" trade"+(count>1?"s":"")+" copié"+(count>1?"s":"")+" : colle dans l’onglet Journal, colonne A.");
   }
@@ -1539,7 +1734,7 @@
   }
   function requestDeleteJournalField(id){
     const field=app.journalFields.find(item=>item.id===id);if(!field)return;
-    confirmAction("Supprimer le champ « "+field.label+" » ?","Il disparaîtra du formulaire. Les valeurs déjà saisies restent dans la sauvegarde.",()=>{app.journalFields=app.journalFields.filter(item=>item.id!==id);saveNow();renderJournalFields();showToast("Champ supprimé.");},"Supprimer");
+    confirmAction("Supprimer le champ « "+field.label+" » ?","Il disparaîtra du formulaire. Les valeurs déjà saisies restent dans la sauvegarde.",()=>{app.journalFields=app.journalFields.filter(item=>item.id!==id);app.tombstones.fields[id]=Date.now();saveNow();renderJournalFields();showToast("Champ supprimé.");},"Supprimer");
   }
   function applyJournalSetting(control){
     const key=control.dataset.jsetting,raw=String(control.value).trim().replace(",",".");
@@ -1599,13 +1794,13 @@
   function chooseNoSetup(){
     const setup=setupFor();
     if(setup.noSetup){
-      setup.noSetup=false;app.journal=app.journal.filter(entry=>!(entry.kind==="no_trade"&&entry.sessionId===setup.sessionId));
+      setup.noSetup=false;removeJournalEntries(entry=>entry.kind==="no_trade"&&entry.sessionId===setup.sessionId);
       scheduleSave();expandedStage="context";render();haptic(6);showToast("Choix « Pas de setup » retiré.");return;
     }
     activeIncidents(setup).forEach(i=>{i.status="abandoned";i.resolvedAt=isoNow();});
     setup.noSetup=true;setup.entryState=null;
     const p=newYorkParts(new Date()),parts=phraseParts(setup);
-    app.journal=app.journal.filter(entry=>!(entry.kind==="no_trade"&&entry.sessionId===setup.sessionId));
+    removeJournalEntries(entry=>entry.kind==="no_trade"&&entry.sessionId===setup.sessionId);
     app.journal.push(normalizeJournalEntry({id:uniqueId("j"),kind:"no_trade",createdAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setup.sessionId,summary:parts?parts.text:"Aucun contexte écrit."},0));
     saveNow();expandedStage="context";render();haptic([12,30,12]);showToast("Pas de setup : ne pas trader est une bonne décision.");
   }
@@ -1739,7 +1934,7 @@
     let serialized;
     try{serialized=JSON.stringify(candidate);localStorage.setItem(STORAGE_KEY,serialized);}
     catch(error){console.warn("Import non sauvegardé",error);showToast("Import annulé : stockage local indisponible.");return false;}
-    clearTimeout(saveTimer);app=candidate;closeSheet();render();syncAndroidToiNotifications(false);showToast("Sauvegarde restaurée.");haptic([14,30,14]);return true;
+    clearTimeout(saveTimer);app=candidate;closeSheet();render();syncAndroidToiNotifications(false);scheduleSync(1000);showToast("Sauvegarde restaurée.");haptic([14,30,14]);return true;
   }
   async function prepareBackupImport(input){
     const file=input.files&&input.files[0];input.value="";if(!file)return;
@@ -1856,7 +2051,8 @@
     }
     frag.append(notificationGroup);
 
-    const simpleBackup=node("section","cfg-group");simpleBackup.append(cfgHeading("Sauvegarde & transfert","La sauvegarde contient les réglages, la session en cours, le journal et l’historique des verdicts. Rien n’est envoyé en ligne."));
+    frag.append(renderSyncGroup());
+    const simpleBackup=node("section","cfg-group");simpleBackup.append(cfgHeading("Sauvegarde & transfert","Le fichier contient les réglages, la session en cours, le journal et l’historique des verdicts (jamais le jeton GitHub)."));
     simpleBackup.append(setAction(makeButton("secondary-btn","Exporter / partager une sauvegarde"),"backup-export"),setAction(makeButton("secondary-btn","Importer une sauvegarde"),"backup-import"));
     const simpleFileInput=node("input","sr-only");simpleFileInput.type="file";simpleFileInput.id="backup-import-file";simpleFileInput.accept=".json,application/json";simpleBackup.append(simpleFileInput);frag.append(simpleBackup);
 
@@ -1907,7 +2103,7 @@
   function requestFullReset(){
     confirmAction("Réinitialisation complète ?","Cette action supprimera la configuration et toutes les sélections locales.",()=>{
       setTimeout(()=>confirmAction("Confirmation définitive","Toutes les données locales de Pre-Trade Validator seront effacées. Cette action est irréversible.",()=>{
-        try{[STORAGE_KEY,V7_KEY,V6_KEY,V5_KEY,V4_KEY,V3_KEY,V2_KEY,V1_KEY].forEach(key=>localStorage.removeItem(key));}catch(error){console.warn("Effacement local impossible",error);}
+        try{[STORAGE_KEY,SYNC_KEY,V7_KEY,V6_KEY,V5_KEY,V4_KEY,V3_KEY,V2_KEY,V1_KEY].forEach(key=>localStorage.removeItem(key));}catch(error){console.warn("Effacement local impossible",error);}
         app=makeFreshApp();saveNow();syncAndroidToiNotifications(false);closeSheet();render();showToast("Application entièrement réinitialisée.");
       },"Tout effacer"),60);
     },"Continuer");
@@ -1937,6 +2133,7 @@
     else if(action==="journal-copy")void copyNewTrades();
     else if(action==="journal-csv")void exportJournalCsv();
     else if(action==="journal-fields")openSheet("journal-fields");
+    else if(action==="open-config")openSheet("config");
     else if(action==="journal-tab"){journalTab=id==="dash"?"dash":"list";render();haptic(6);}
     else if(action==="dash-reset"){dashState.from="";dashState.to="";render();}
     else if(action==="dash-month"){dashState.month=shiftMonth(dashState.month||monthKey(ymd(newYorkParts(new Date()))),Number(id)||0);render();haptic(6);}
@@ -2003,6 +2200,9 @@
     else if(action==="copy-select"){const area=document.getElementById("copy-area");if(area){area.focus();area.select();}}
     else if(action==="reset-current")requestResetCurrent();
     else if(action==="full-reset")requestFullReset();
+    else if(action==="sync-connect")void connectSync();
+    else if(action==="sync-now")void syncNow(true);
+    else if(action==="sync-disconnect")disconnectSync();
   });
   document.getElementById("sheet-body").addEventListener("change",event=>{
     if(event.target.id==="backup-import-file"){void prepareBackupImport(event.target);return;}
@@ -2034,7 +2234,7 @@
     if(document.getElementById("confirm-overlay").classList.contains("open"))closeConfirm();else if(activeSheet)closeSheet();
   });
   window.addEventListener("beforeunload",saveNow);
-  window.addEventListener("online",updateConnectionStatus);
+  window.addEventListener("online",()=>{updateConnectionStatus();syncIfStale();});
   window.addEventListener("offline",updateConnectionStatus);
   window.addEventListener("android-bridge-ready",()=>{syncAndroidToiNotifications(false);if(activeSheet==="config")renderConfig();});
   window.addEventListener("android-notification-permission-changed",()=>{syncAndroidToiNotifications(false);if(activeSheet==="config")renderConfig();});
@@ -2063,7 +2263,14 @@
   updateTiming();
   syncAndroidToiNotifications(false);
   setInterval(updateTiming,1000);
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden){updateTiming();syncAndroidToiNotifications(false);}});
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden){updateTiming();syncAndroidToiNotifications(false);syncIfStale();}
+    else if(loadSyncConfig()&&(journalSignature()!==syncState.lastJournalSig||lastLogAt()>syncState.lastPushedLogAt))void syncNow(false);
+  });
+  window.addEventListener("focus",syncIfStale);
+  // Historique des verdicts : envoyé au plus toutes les 10 min pour limiter les commits.
+  setInterval(()=>{if(!document.hidden&&loadSyncConfig()&&lastLogAt()>syncState.lastPushedLogAt)void syncNow(false);},10*60000);
+  void syncNow(false);
   window.PTV={
     getVerdict:getVerdict,save:saveNow,exportData:()=>clone(app),resetCurrentSetup:resetCurrentSetup,
     migrateV4ToV5:migrateV4ToV5,
