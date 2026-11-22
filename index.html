@@ -294,7 +294,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.5.0";
+  const APP_VERSION = "1.6.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -343,7 +343,6 @@
   const CONTEXT_FIELDS = [
     {id:"poi",label:"POI — ma zone de travail",help:"Où je cherche le setup. Une liquidité peut être un POI.",placeholder:"ex. AM High + FVG baissiers",required:true,chips:["FVG H1","Breaker H1","Old PD Array","Opening Price","London High","London Low","AM High","AM Low","Data High","Data Low"]},
     {id:"dol",label:"DOL — ma cible",help:"La liquidité visée depuis ce POI.",placeholder:"ex. PDL",required:true,chips:["PDH","PDL","London High","London Low","AM High","AM Low","Asian High","Asian Low","Data High","Data Low"]},
-    {id:"toi",label:"TOI — ma fenêtre",help:"La fenêtre est vérifiée automatiquement ci-dessus.",placeholder:"ex. XX:45 → XX:15",required:false,chips:["XX:45 → XX:15","Open 9:30","Manipulation cycle"]},
     {id:"invalidation",label:"Invalidation du scénario",help:"Ce qui me fait arrêter de chercher.",placeholder:"ex. NQ et ES reprennent leurs highs",required:false,chips:[]}
   ];
   const WARNING_FLAGS = [
@@ -585,6 +584,8 @@
     CONTEXT_FIELDS.forEach(field=>setup.context[field.id]=safeText(raw&&raw.context&&raw.context[field.id],300,""));
     // Narrative retirée de l’écran (v1.5.0) : conservée telle quelle pour les anciennes sessions.
     setup.context.narrative=safeText(raw&&raw.context&&raw.context.narrative,300,"");
+    // Champ TOI texte retiré (v1.6.0) : la fenêtre est détectée automatiquement.
+    setup.context.toi=safeText(raw&&raw.context&&raw.context.toi,300,"");
     setup.toiOverride=["yes","no"].includes(raw&&raw.toiOverride)?raw.toiOverride:null;
     setup.toiOverrideAt=setup.toiOverride&&Number.isFinite(Number(raw.toiOverrideAt))?Number(raw.toiOverrideAt):null;
     CSD_OBSERVATIONS.forEach(item=>{if(raw&&raw.csdObs&&raw.csdObs[item.id]===true)setup.csdObs[item.id]=true;});
@@ -806,8 +807,6 @@
       else if(!value)push("wait","state:"+question.id,"État du trader","Répondre à l’état du trader");
     });
     CONTEXT_FIELDS.forEach(field=>{if(field.required&&!setup.context[field.id].trim())push("wait","context:"+field.id,field.label,field.label+" à écrire");});
-    const toiWindow=currentToi();
-    if(!toiSatisfied(setup,toiWindow))push("wait","context:toi","TOI",effectiveToiOverride(setup)==="no"?"Pas encore dans ma TOI":"Hors TOI — "+TOI_CHECK.toiHint);
     orderedCriteria("setup","gate").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
     orderedCriteria("entry","trigger").forEach(c=>{const p=criterionProblem(c,setup,rank++);if(p)problems.push(p);});
 
@@ -819,6 +818,8 @@
     else if(setup.criterionStates.c_smt)verdict=makeVerdict("premium",null,[]);
     else verdict=makeVerdict("conforme",null,[]);
     verdict.warnings=WARNING_FLAGS.filter(flag=>setup.flags[flag.id]).map(flag=>flag.text);
+    // TOI : avertissement seulement, jamais bloquant (une entrée à XX:40 reste possible).
+    if(!toiSatisfied(setup,currentToi()))verdict.warnings.unshift("Hors TOI (XX:45 → XX:15 ou Open 09:30)");
     return verdict;
   }
   function stageStatus(stage,setup){
@@ -830,7 +831,7 @@
       if(activeIncidents(setup).length||STATE_QUESTIONS.some(q=>!setup.traderState[q.id]))return "wait";
       return "done";
     }
-    if(stage==="context")return contextFieldsDone(setup)&&toiSatisfied(setup)?"done":"wait";
+    if(stage==="context")return contextFieldsDone(setup)?"done":"wait";
     if(stage==="setup"){
       const criteria=orderedCriteria("setup","gate");
       const problems=criteria.map((c,i)=>criterionProblem(c,setup,i)).filter(Boolean);
@@ -1007,7 +1008,7 @@
     const windowInfo=currentToi();
     return {
       model:setup.csdObs.fpfvg?"fpfvg":"",narrative:setup.context.narrative,dol:setup.context.dol,poi:setup.context.poi,
-      toi:setup.context.toi||(effectiveToiOverride(setup)==="yes"?"validée à la main":windowInfo.inside?windowInfo.label:""),invalidation:setup.context.invalidation,
+      toi:windowInfo.inside?windowInfo.label:effectiveToiOverride(setup)==="yes"?"validée à la main":"hors TOI",invalidation:setup.context.invalidation,
       smt:!!setup.criterionStates.c_smt,liquidity:setup.criterionStates.c_liquidity_taken==="yes",csd:setup.criterionStates.c_setup_liquidity==="yes",
       inToi:toiSatisfied(setup,windowInfo),obs:CSD_OBSERVATIONS.filter(item=>setup.csdObs[item.id]).map(item=>item.label),
       incidents:activeIncidents(setup).map(incident=>incidentLabel(incident.type)),flags:WARNING_FLAGS.filter(flag=>setup.flags[flag.id]).map(flag=>flag.text)
@@ -1044,7 +1045,8 @@
   function phraseParts(setup){
     const c=setup.context;
     if(!c.dol.trim()&&!c.poi.trim())return null;
-    const text="Je cherche le CSD dans "+(c.poi.trim()||"mon POI (à écrire)")+", pendant "+(c.toi.trim()||TOI_CHECK.toiHint)+". DOL "+(c.dol.trim()||"à écrire")+".";
+    const toi=currentToi();
+    const text="Je cherche le CSD dans "+(c.poi.trim()||"mon POI (à écrire)")+", pendant "+(toi.inside?toi.label:"ma TOI ("+TOI_CHECK.toiHint+")")+". DOL "+(c.dol.trim()||"à écrire")+".";
     return {text:text,invalidation:c.invalidation.trim()};
   }
   function renderPhraseCard(setup,extraClass){
@@ -1062,9 +1064,9 @@
   }
   function renderToiStatus(setup){
     const windowInfo=currentToi(),override=effectiveToiOverride(setup),ok=toiSatisfied(setup,windowInfo);
-    const box=node("div","toi-box gate-item"+(ok?" valid":" wait invalid"));
+    const box=node("div","toi-box gate-item"+(ok?" valid":" wait"));
     const auto=windowInfo.inside?"dans "+windowInfo.label:windowInfo.next?"hors TOI · prochaine "+windowInfo.next.name+" "+hm(windowInfo.next.start)+"–"+hm(windowInfo.next.end)+" NY":"hors TOI";
-    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",TOI_CHECK.toiHint+" · "+(override?"corrigé à la main (expire après "+TOI_OVERRIDE_MINUTES+" min)":"automatique : "+auto)));
+    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",TOI_CHECK.toiHint+" · "+(override?"corrigé à la main (expire après "+TOI_OVERRIDE_MINUTES+" min)":"automatique : "+auto)+". Hors TOI = avertissement, pas de blocage."));
     const choices=node("div","binary-choice"),current=override||(windowInfo.inside?"yes":"no");
     [["yes","OUI","yes"],["no","PAS ENCORE","wait-no"]].forEach(item=>{
       const button=setAction(makeButton("choice-btn "+item[2],item[1]),"toi-override");button.dataset.value=item[0];
@@ -1075,7 +1077,7 @@
   function renderContextStage(container,setup){
     const stage=stageCard("context",2,"CONTEXTE","Écris ton scénario avant de chercher le CSD.",setup),body=stage.body,off=setup.noSetup;
     CONTEXT_FIELDS.forEach(field=>{
-      if(field.id==="toi")body.append(renderToiStatus(setup));
+      if(field.id==="invalidation")body.append(renderToiStatus(setup));
       const wrap=node("div","field"),inputId="ctx-"+field.id,label=node("label","field-label",field.label+(field.required?"":" · facultatif"));
       label.htmlFor=inputId;wrap.append(label);if(field.help)wrap.append(node("span","field-help",field.help));
       const value=setup.context[field.id],input=node("input","text-input"+(value.trim()?" filled":""));
@@ -1160,7 +1162,7 @@
     if((verdict.type==="nogo"||verdict.type==="wait")&&verdict.cause)title+=" — "+verdict.cause.message;
     document.getElementById("sticky-title").textContent=title;
     let sub;
-    if(warnings.length)sub="⚠ Abstention conseillée : "+warnings[0]+(warnings.length>1?" (+"+(warnings.length-1)+")":"");
+    if(warnings.length)sub="⚠ "+(warnings[0].startsWith("Hors TOI")?"":"Abstention conseillée : ")+warnings[0]+(warnings.length>1?" (+"+(warnings.length-1)+")":"");
     else if(verdict.type==="conforme")sub="Processus conforme, résultat non prédit.";
     else if(verdict.type==="wait"||verdict.type==="nogo"){
       const others=new Set(verdict.missing||[]).size-1;
@@ -1676,7 +1678,7 @@
     const missing=[...new Set(verdict.missing||[])];
     if(missing.length){const list=node("ul","verdict-missing");missing.forEach(item=>list.append(node("li","",item)));detail.append(list);}
     const warnings=verdict.type==="no_setup"?[]:(verdict.warnings||[]);
-    if(warnings.length){detail.append(node("div","verdict-warn-title","Signaux d’abstention — sans blocage"));const list=node("ul","verdict-missing");warnings.forEach(item=>list.append(node("li","",item)));detail.append(list);}
+    if(warnings.length){detail.append(node("div","verdict-warn-title","Avertissements — sans blocage"));const list=node("ul","verdict-missing");warnings.forEach(item=>list.append(node("li","",item)));detail.append(list);}
     frag.append(detail);body.replaceChildren(frag);
   }
   function makeBackupPayload(){
