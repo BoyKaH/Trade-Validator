@@ -1738,7 +1738,8 @@
     let points=0,streak=0,bestStreak=0;
     [...days.keys()].sort().forEach(key=>{
       const d=days.get(key),clean=!d.bad;streak=clean?streak+1:0;bestStreak=Math.max(bestStreak,streak);
-      points+=Math.min(d.avoided,5)+Math.min(d.skip,1)*2+(clean?2:0);
+      // Une journée n’a pas de valeur en soi : seules les actions rapportent. La série sert aux badges.
+      points+=Math.min(d.avoided,5)+Math.min(d.skip,1);
     });
     let run=0,conformBest=0,conformTotal=0;
     sortedTrades().filter(e=>e.date).forEach(e=>{if(e.auto&&e.auto.category==="ok"){conformTotal++;run++;conformBest=Math.max(conformBest,run);}else run=0;});
@@ -1769,7 +1770,7 @@
     const badges=node("div","disc-badges");
     earned.forEach(b=>badges.append(node("span","disc-badge got",b.icon+" "+b.label)));
     if(next)badges.append(node("span","disc-badge","🔒 "+next.label+" · "+s[next.stat]+"/"+next.goal));
-    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme +1 · session sans trade +2 · journée sans trade merdique +2. Un trade hors process ou sans validation remet la série à zéro. Le résultat en R ne rapporte rien."));
+    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme +1 · pas de setup +1 (1 par jour). Un trade hors process ou sans validation remet la série à zéro. Le résultat en R ne rapporte rien."));
     wrap.append(card);
   }
   let avoidedId=null;
