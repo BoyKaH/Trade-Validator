@@ -94,7 +94,13 @@
     .sticky-status{display:flex;align-items:center;gap:9px;flex:1;min-width:0;padding:5px 2px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.sticky-copy{flex:1;min-width:0}.sticky-title,.sticky-sub{display:block}.sticky-title{font-size:12px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sticky-sub{font-size:11.5px;color:#c0c0c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
     .icon-btn{min-width:44px;height:44px;padding:0 9px;border-radius:10px;border:1px solid #4a4a4a;background:#191919;color:#bbb;font-size:15px;cursor:pointer;display:grid;place-items:center}
     .icon-btn.reset{font-size:11px;font-weight:800;min-width:82px;line-height:1.1}
-    .icon-btn.fomo{font-size:11px;font-weight:850;min-width:62px;line-height:1.1;border-color:#1e654c;background:#0a1c15;color:#68d6af}
+    .icon-btn.fomo{font-size:11px;font-weight:850;min-width:62px;height:auto;min-height:44px;padding:4px 8px;line-height:1.1;border-color:#1e654c;background:#0a1c15;color:#68d6af;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    .fomo-count{font-size:11px;font-weight:880;color:#c9f5e3}
+    .icon-btn.fomo.pulse{border-color:#68d6af;animation:avoidPulse 1.6s ease-in-out infinite}
+    @keyframes avoidPulse{0%,100%{box-shadow:0 0 0 0 rgba(104,214,175,.55)}50%{box-shadow:0 0 0 7px rgba(104,214,175,0)}}
+    .icon-btn.fomo.pop{animation:avoidPop .45s ease-out}
+    @keyframes avoidPop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+    @media (prefers-reduced-motion:reduce){.icon-btn.fomo.pulse,.icon-btn.fomo.pop{animation:none}}
     .sheet-overlay{position:fixed;z-index:180;inset:0;background:rgba(0,0,0,.72);opacity:0;pointer-events:none;transition:opacity .2s}
     .sheet-overlay.open{opacity:1;pointer-events:auto}
     .sheet{position:fixed;z-index:181;left:0;right:0;bottom:0;max-height:92vh;background:#191919;border:1px solid #333;border-bottom:0;border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .25s ease;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
@@ -297,7 +303,7 @@
         <span class="status-dot" aria-hidden="true"></span>
         <span class="sticky-copy"><span class="sticky-title" id="sticky-title"></span><span class="sticky-sub" id="sticky-sub"></span></span>
       </button>
-      <button class="icon-btn fomo" type="button" id="fomo-avoided" aria-label="J’ai évité un FOMO" title="J’ai évité un FOMO">FOMO<br>évité</button>
+      <button class="icon-btn fomo" type="button" id="fomo-avoided" aria-label="Trade évité : je me suis retenu" title="Trade évité : FOMO ou trade impulsif retenu"><span class="fomo-label">Trade<br>évité</span><span class="fomo-count" id="fomo-count" hidden></span></button>
       <button class="icon-btn" type="button" id="config-open" aria-label="Réglages" title="Réglages">⚙</button>
     </div>
   </aside>
@@ -351,8 +357,8 @@
     {id:"c_setup_liquidity",shortTitle:"CSD présent dans mon POI",description:"Le changement d’orderflow attendu est présent dans mon POI : c’est le setup.",section:"entry",subgroup:"trigger",type:"boolean",behavior:"wait",systemRole:"core"},
     {id:"c_smt",shortTitle:"SMT présent",description:"Confluence facultative, sans effet sur l’autorisation.",section:"setup",subgroup:"confluence",type:"boolean",behavior:"bonus",systemRole:"bonus"}
   ];
-  // FOMO évité : compteur de retenue, ce qui a tenté est facultatif.
-  const AVOID_REASONS = [{id:"market",label:"Marché"},{id:"discord",label:"Discord"},{id:"result",label:"Résultat"}];
+  // Trade évité (ex-« FOMO évité ») : compteur de retenue, la raison est facultative. L’id "market" garde l’ancien choix « Marché ».
+  const AVOID_REASONS = [{id:"market",label:"FOMO"},{id:"impulse",label:"Impulsif"},{id:"discord",label:"Discord"},{id:"result",label:"Résultat"}];
   const DAILY_SL_LIMIT = 2; // règle de Pierre (garde-fou), pas une règle de la formation
   const DEFAULT_SETTINGS = {lossPauseMinutes:10,dailyTargetR:0,csvFormat:"fr",nextTradeNum:1,haptics:true,anticipationEffect:"block",toiNotifications:false,toiLeadMinutes:15,toiAlertWindows:["london-star-0","london-star-1","ny-am-star-0","ny-am-star-1","ny-pm-star-0","ny-pm-star-1"]};
   // Fenêtres TOI de référence en heure locale de New York, indépendantes du verdict.
@@ -1301,7 +1307,7 @@
       if(limit)box.append(node("strong","",guard.sl+" SL aujourd’hui : NO GO jusqu’à demain"));
       const strip=node("div","day-strip");
       strip.append(node("span","","Aujourd’hui :"));
-      if(a)strip.append(node("span","good","✓ "+a+" FOMO évité"+(a>1?"s":"")));
+      if(a)strip.append(node("span","good","✓ "+a+" trade"+(a>1?"s":"")+" évité"+(a>1?"s":"")));
       if(guard.count)strip.append(node("span","",guard.count+" trade"+(guard.count>1?"s":"")+" · "+fmtR(guard.sum)));
       if(guard.sl)strip.append(node("span","bad",guard.sl+" SL / "+DAILY_SL_LIMIT));
       box.append(strip);
@@ -1405,6 +1411,10 @@
   function renderSticky(verdict){
     const sticky=document.getElementById("sticky"),warnings=verdict.type==="conforme"||verdict.type==="premium"?(verdict.warnings||[]):[];
     sticky.className="sticky "+verdict.type+(warnings.length?" warned":"");
+    // Bouton « Trade évité » : compteur du jour, et il pulse quand le verdict dit d’attendre ou de ne pas entrer.
+    const avoidBtn=document.getElementById("fomo-avoided"),count=document.getElementById("fomo-count"),today=app?avoidedCounts().today:0;
+    avoidBtn.classList.toggle("pulse",verdict.type==="wait"||verdict.type==="nogo");
+    count.hidden=!today;count.textContent="🛡 "+today;
     let title=verdict.stickyTitle;
     if((verdict.type==="nogo"||verdict.type==="wait")&&verdict.cause)title+=" — "+verdict.cause.message;
     document.getElementById("sticky-title").textContent=title;
@@ -1573,13 +1583,13 @@
     });
     wrap.append(tiles);
     const avoided=avoidedCounts();
-    wrap.append(node("p","journal-summary","FOMO évités : "+avoided.week+" cette semaine · "+avoided.total+" au total · "+stats.skips+" session"+(stats.skips>1?"s":"")+" sans trade"+(stats.gaps?" · "+stats.gaps+" écart"+(stats.gaps>1?"s":"")+" entre plan déclaré et verdict":"")+"."));
+    wrap.append(node("p","journal-summary","Trades évités : "+avoided.week+" cette semaine · "+avoided.total+" au total · "+stats.skips+" session"+(stats.skips>1?"s":"")+" sans trade"+(stats.gaps?" · "+stats.gaps+" écart"+(stats.gaps>1?"s":"")+" entre plan déclaré et verdict":"")+"."));
     const actions=node("div","journal-actions");
     actions.append(setAction(makeButton("primary-btn","+ Ajouter un trade"),"journal-new"),setAction(makeButton("secondary-btn","Exporter"),"journal-export"));
     wrap.append(actions);
     const entries=app.journal.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)||String(b.createdAt).localeCompare(String(a.createdAt)));
     const list=node("div","journal-list");
-    if(!entries.length)list.append(node("p","empty-copy","Aucune entrée. Touche « FOMO évité » en bas quand tu te retiens d’entrer. Remplis le journal après chaque trade : l’appli retrouve le verdict affiché à ton heure d’entrée."));
+    if(!entries.length)list.append(node("p","empty-copy","Aucune entrée. Touche « Trade évité » en bas quand tu te retiens d’entrer (FOMO, trade impulsif). Remplis le journal après chaque trade : l’appli retrouve le verdict affiché à ton heure d’entrée."));
     entries.forEach(entry=>{
       if(entry.kind==="no_trade"){
         const item=setAction(makeButton("journal-item","","Session sans trade du "+fmtDate(entry.date)+" — toucher pour supprimer"),"journal-skip",entry.id),top=node("div","journal-item-top");
@@ -1588,9 +1598,9 @@
       }
       if(entry.kind==="avoided"){
         const reason=AVOID_REASONS.find(r=>r.id===entry.reason);
-        const item=setAction(makeButton("journal-item avoided","","FOMO évité du "+fmtDate(entry.date)+" — toucher pour modifier"),"avoided-open",entry.id),top=node("div","journal-item-top");
-        top.append(node("span","",fmtDate(entry.date)+" · "+entry.time+" NY"),node("span","badge avoided","FOMO évité"),node("span","journal-item-r",reason?reason.label:""));
-        item.append(top,node("div","journal-item-sub","Tu t’es contenu"+(reason?" · tenté par : "+reason.label:"")));list.append(item);return;
+        const item=setAction(makeButton("journal-item avoided","","Trade évité du "+fmtDate(entry.date)+" — toucher pour modifier"),"avoided-open",entry.id),top=node("div","journal-item-top");
+        top.append(node("span","",fmtDate(entry.date)+" · "+entry.time+" NY"),node("span","badge avoided","Trade évité"),node("span","journal-item-r",reason?reason.label:""));
+        item.append(top,node("div","journal-item-sub","Retenu"+(reason?" · "+reason.label:"")));list.append(item);return;
       }
       const category=entry.auto?entry.auto.category:"none",item=setAction(makeButton("journal-item"+(category==="none"?" alert":""),"","Modifier le trade "+(entry.num||"")),"journal-open",entry.id),top=node("div","journal-item-top");
       top.append(node("span","","#"+(entry.num||"–")+" · "+fmtDate(entry.date)+" "+entry.time+" NY"+(entry.sens?" · "+entry.sens:"")),node("span","badge "+category,categoryLabel(category)));
@@ -1705,15 +1715,15 @@
   // Tout est recalculé depuis le journal : rien de plus à stocker ni à synchroniser.
   const XP_PER_LEVEL = 25;
   const BADGES = [
-    {id:"fomo1",icon:"🛡",label:"Premier FOMO évité",stat:"avoidedTotal",goal:1},
+    // Orientés retenue : rien ne récompense le fait de prendre des trades.
+    {id:"fomo1",icon:"🛡",label:"Premier trade évité",stat:"avoidedTotal",goal:1},
     {id:"skip1",icon:"🧘",label:"Première session sans trade",stat:"skipTotal",goal:1},
-    {id:"day3",icon:"🔥",label:"3 jours disciplinés d’affilée",stat:"bestStreak",goal:3},
-    {id:"ok5",icon:"🎯",label:"5 trades conformes d’affilée",stat:"conformBest",goal:5},
-    {id:"fomo10",icon:"🛡",label:"10 FOMO évités",stat:"avoidedTotal",goal:10},
-    {id:"day7",icon:"🔥",label:"7 jours disciplinés d’affilée",stat:"bestStreak",goal:7},
-    {id:"ok20",icon:"🎯",label:"20 trades conformes d’affilée",stat:"conformBest",goal:20},
-    {id:"day20",icon:"🏆",label:"20 jours disciplinés d’affilée",stat:"bestStreak",goal:20},
-    {id:"fomo50",icon:"🏰",label:"50 FOMO évités",stat:"avoidedTotal",goal:50}
+    {id:"day3",icon:"🔥",label:"3 jours sans trade merdique",stat:"bestStreak",goal:3},
+    {id:"fomo10",icon:"🛡",label:"10 trades évités",stat:"avoidedTotal",goal:10},
+    {id:"day7",icon:"🔥",label:"7 jours sans trade merdique",stat:"bestStreak",goal:7},
+    {id:"fomo50",icon:"🏰",label:"50 trades évités",stat:"avoidedTotal",goal:50},
+    {id:"day20",icon:"🏆",label:"20 jours sans trade merdique",stat:"bestStreak",goal:20},
+    {id:"fomo100",icon:"👑",label:"100 trades évités",stat:"avoidedTotal",goal:100}
   ];
   function disciplineStats(){
     const days=new Map(),get=d=>{if(!days.has(d))days.set(d,{trades:0,bad:0,avoided:0,skip:0});return days.get(d);};
@@ -1732,7 +1742,7 @@
     });
     let run=0,conformBest=0,conformTotal=0;
     sortedTrades().filter(e=>e.date).forEach(e=>{if(e.auto&&e.auto.category==="ok"){conformTotal++;run++;conformBest=Math.max(conformBest,run);}else run=0;});
-    points+=conformTotal*3;
+    points+=conformTotal; // trade conforme : +1 seulement, pour ne pas pousser à trader
     const today=days.get(todayNyKey());
     return {points:points,level:Math.floor(points/XP_PER_LEVEL)+1,levelProgress:points%XP_PER_LEVEL,streak:streak,bestStreak:bestStreak,
       todayBroken:!!(today&&today.bad),conformRun:run,conformBest:conformBest,conformTotal:conformTotal,avoidedTotal:avoidedTotal,skipTotal:skipTotal};
@@ -1748,24 +1758,25 @@
     const bar=node("div","disc-bar"),fill=node("div","disc-fill");fill.style.width=Math.round(s.levelProgress*100/XP_PER_LEVEL)+"%";bar.append(fill);
     card.append(head,bar,node("div","disc-next",(XP_PER_LEVEL-s.levelProgress)+" pts avant le niveau "+(s.level+1)));
     const stats=node("div","disc-stats");
-    [["🔥 "+s.streak,"jour"+(s.streak>1?"s":"")+" discipliné"+(s.streak>1?"s":""),"record "+s.bestStreak],
-     ["🎯 "+s.conformRun,"conforme"+(s.conformRun>1?"s":"")+" d’affilée","record "+s.conformBest],
-     ["🛡 "+s.avoidedTotal,"FOMO évité"+(s.avoidedTotal>1?"s":""),"au total"]].forEach(([value,label,sub])=>{
+    [["🔥 "+s.streak,"jour"+(s.streak>1?"s":"")+" sans trade merdique","record "+s.bestStreak],
+     ["🛡 "+s.avoidedTotal,"trade"+(s.avoidedTotal>1?"s":"")+" évité"+(s.avoidedTotal>1?"s":""),"au total"],
+     ["🎯 "+s.conformRun,"conforme"+(s.conformRun>1?"s":"")+" d’affilée","record "+s.conformBest]].forEach(([value,label,sub])=>{
       const t=node("div","disc-stat");t.append(node("div","disc-stat-value",value),node("div","disc-stat-label",label),node("div","disc-stat-sub",sub));stats.append(t);
     });
     card.append(stats);
-    if(s.todayBroken)card.append(node("div","disc-warn","Série remise à zéro aujourd’hui : trade hors process ou sans validation."));
+    if(s.todayBroken)card.append(node("div","disc-warn","Série remise à zéro aujourd’hui : un trade hors process ou sans validation."));
     const earned=BADGES.filter(b=>s[b.stat]>=b.goal),next=BADGES.find(b=>s[b.stat]<b.goal);
     const badges=node("div","disc-badges");
     earned.forEach(b=>badges.append(node("span","disc-badge got",b.icon+" "+b.label)));
     if(next)badges.append(node("span","disc-badge","🔒 "+next.label+" · "+s[next.stat]+"/"+next.goal));
-    card.append(badges,node("div","disc-rules","Trade conforme +3 · journée disciplinée +2 · session sans trade +2 · FOMO évité +1 (5 par jour max). Le résultat en R ne rapporte rien."));
+    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme +1 · session sans trade +2 · journée sans trade merdique +2. Un trade hors process ou sans validation remet la série à zéro. Le résultat en R ne rapporte rien."));
     wrap.append(card);
   }
   let avoidedId=null;
   function logAvoided(){
     const before=earnedBadgeIds(),p=newYorkParts(new Date()),entry=normalizeJournalEntry({id:uniqueId("j"),kind:"avoided",createdAt:isoNow(),updatedAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setupFor().sessionId,reason:""},0);
     app.journal.push(entry);saveNow();haptic([10,40,10]);
+    const btn=document.getElementById("fomo-avoided");btn.classList.remove("pop");void btn.offsetWidth;btn.classList.add("pop");
     avoidedId=entry.id;render();openSheet("avoided");
     const badge=newBadgeText(before);if(badge)showToast(badge);
   }
@@ -1773,9 +1784,9 @@
     const entry=app.journal.find(item=>item.id===avoidedId&&item.kind==="avoided");
     if(!entry){closeSheet();return;}
     const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment(),counts=avoidedCounts();
-    document.getElementById("sheet-title").textContent="FOMO évité";
+    document.getElementById("sheet-title").textContent="Trade évité";
     const s=disciplineStats(),done=node("div","notice green");
-    done.append(node("strong","","✓ Tu t’es contenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · niveau "+s.level+" ("+s.points+" pts) · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" discipliné"+(s.streak>1?"s":"")+"."));frag.append(done);
+    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · niveau "+s.level+" ("+s.points+" pts) · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" sans trade merdique."));frag.append(done);
     frag.append(node("div","field-label","Ce qui t’a tenté · facultatif"));
     const row=node("div","chip-row");
     AVOID_REASONS.forEach(reason=>{const b=setAction(makeButton("chip",reason.label),"avoided-reason",reason.id);b.setAttribute("aria-pressed",String(entry.reason===reason.id));row.append(b);});
@@ -1794,7 +1805,7 @@
   }
   function requestDeleteJournal(id){
     const entry=app.journal.find(item=>item.id===id);if(!entry)return;
-    const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":entry.kind==="avoided"?"Ce FOMO évité du "+fmtDate(entry.date)+" à "+entry.time+" NY sera retiré du compteur.":"Le trade #"+(entry.num||"")+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
+    const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":entry.kind==="avoided"?"Ce trade évité du "+fmtDate(entry.date)+" à "+entry.time+" NY sera retiré du compteur.":"Le trade #"+(entry.num||"")+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
     confirmAction("Supprimer cette entrée ?",text,()=>{removeJournalEntries(item=>item.id===id);saveNow();if(activeSheet)closeSheet();render();showToast("Entrée supprimée.");},"Supprimer");
   }
   async function shareOrDownload(blob,filename,mime,title){
@@ -1845,7 +1856,7 @@
       const date={date:e.date},time=e.time?{time:e.time}:"";
       if(e.kind==="avoided"){
         const reason=AVOID_REASONS.find(r=>r.id===e.reason);
-        return ["","FOMO évité","","",date,day,time,"","","","","","",reason?"Contenu · tenté par : "+reason.label:"Contenu",""];
+        return ["","Trade évité","","",date,day,time,"","","","","","",reason?"Retenu · "+reason.label:"Retenu",""];
       }
       return [e.num||"","Trade",e.shotHtf,e.shotLtf,date,day,time,e.sens,e.biais,e.contexte,e.smt,e.confirmation,e.r===null?"":e.r,e.psycho,e.plan];
     });
@@ -1889,7 +1900,7 @@
     document.getElementById("sheet-title").textContent="Exporter le journal";
     const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment();
     const pending=app.journal.filter(entry=>entry.kind==="trade"&&!entry.exported).length;
-    frag.append(node("p","cfg-help","Fichier Excel : tous les trades et les FOMO évités (colonne « Type »). Copie Google Sheets : seulement les nouveaux trades, dans les 14 colonnes de ton tableau."));
+    frag.append(node("p","cfg-help","Fichier Excel : tous les trades pris et les trades évités (colonne « Type »). Copie Google Sheets : seulement les nouveaux trades, dans les 14 colonnes de ton tableau."));
     frag.append(setAction(makeButton("primary-btn","Fichier Excel (.xlsx)"),"journal-xlsx"),setAction(makeButton("secondary-btn","Copier les nouveaux trades pour Google Sheets ("+pending+")"),"journal-copy"));
     body.replaceChildren(frag);
   }
@@ -1897,7 +1908,7 @@
     const rows=xlsxJournalRows();if(!rows.length){showToast("Rien à exporter.");return;}
     const trades=rows.filter(r=>r[1]==="Trade").length,avoided=rows.length-trades;
     const ok=await shareOrDownload(buildJournalXlsx(rows),"journal-trade-legacy-"+todayNyKey()+".xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","Journal Trade Legacy");
-    if(ok)showToast("Excel exporté : "+trades+" trade"+(trades>1?"s":"")+" · "+avoided+" FOMO évité"+(avoided>1?"s":"")+".");
+    if(ok)showToast("Excel exporté : "+trades+" trade"+(trades>1?"s":"")+" · "+avoided+" trade"+(avoided>1?"s":"")+" évité"+(avoided>1?"s":"")+".");
   }
   async function copyNewTrades(){
     const pending=sortedTrades().filter(entry=>!entry.exported);
