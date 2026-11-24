@@ -55,7 +55,6 @@
     .progress-step.current{box-shadow:0 0 0 1px currentColor inset}
     .process-card{padding:11px;margin-bottom:8px}.process-card.locked{opacity:.58}.process-card.collapsed .stage-body{display:none}.process-card.collapsed .section-head{margin-bottom:0}.process-card.inactive-stage .stage-body{opacity:.55}.process-card.inactive-stage .stage-body button{pointer-events:none}
     .section-head{display:flex;align-items:flex-start;gap:9px;width:100%;margin:0 0 10px;padding:0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.section-head:disabled{cursor:not-allowed}
-    .section-index{width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:#292929;color:#bbb;font-size:12.5px;font-weight:850;flex:0 0 auto}
     .section-copy{display:block;min-width:0;flex:1}
     .section-title{display:block;font-size:13px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;line-height:1.25}.section-state{margin-left:auto;color:#999;font-size:11.5px;font-weight:800;white-space:nowrap;padding-top:4px}
     .section-sub{display:block;font-size:12px;color:#949494;line-height:1.4;margin-top:3px}
@@ -164,7 +163,6 @@
     .disc-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
     .disc-title{font-size:12px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;color:#9fe3c8}
     .disc-points{font-size:18px;font-weight:880;color:#68d6af;font-variant-numeric:tabular-nums}
-    .disc-bar{height:8px;border-radius:99px;background:#1f2b26;margin:8px 0 4px;overflow:hidden}.disc-fill{height:100%;border-radius:99px;background:#68d6af}
     .disc-next{font-size:11.5px;color:#8fb3a5}
     .disc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
     .disc-stat{border:1px solid #24352e;border-radius:10px;background:#101614;padding:8px 4px;text-align:center;min-width:0}
@@ -329,7 +327,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.11.0";
+  const APP_VERSION = "1.12.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -1124,7 +1122,6 @@
   }
   function sectionHead(stage,index,title,subtitle,setup,locked){
     const head=setAction(makeButton("section-head","","Ouvrir l’étape "+index+" "+title),"stage-jump",stage);head.disabled=locked;
-    head.append(node("span","section-index",String(index)));
     const copy=node("span","section-copy");copy.append(node("span","section-title",title));
     if(subtitle)copy.append(node("span","section-sub",subtitle));
     head.append(copy,node("span","section-state",stageStateLabel(stage,setup,locked)));return head;
@@ -1301,8 +1298,8 @@
     if(pause){const n=node("div","notice red");n.append(node("strong","","Pause après une perte"),document.createTextNode("Reprise possible à "+PARIS_TIME_FORMATTER.format(new Date(pause.until))+" (Paris). Quitte les charts en attendant."));container.append(n);}
     guard.notes.forEach(item=>{const n=node("div","notice "+item.tone);n.append(node("strong","",item.title),document.createTextNode(item.text));container.append(n);});
     // Un seul bandeau du jour ; il passe en rouge à la limite de SL.
-    const a=guard.avoided.today,limit=guard.sl>=DAILY_SL_LIMIT;
-    if(guard.count||a){
+    const a=guard.avoided.today,limit=guard.sl>=DAILY_SL_LIMIT,disc=disciplineStats();
+    if(guard.count||a||disc.todayPoints){
       const box=node("div","notice "+(limit?"red":a&&!guard.sl?"green":"grey"));
       if(limit)box.append(node("strong","",guard.sl+" SL aujourd’hui : NO GO jusqu’à demain"));
       const strip=node("div","day-strip");
@@ -1310,6 +1307,7 @@
       if(a)strip.append(node("span","good","✓ "+a+" trade"+(a>1?"s":"")+" évité"+(a>1?"s":"")));
       if(guard.count)strip.append(node("span","",guard.count+" trade"+(guard.count>1?"s":"")+" · "+fmtR(guard.sum)));
       if(guard.sl)strip.append(node("span","bad",guard.sl+" SL / "+DAILY_SL_LIMIT));
+      strip.append(node("span","good","+"+disc.todayPoints+" pt"+(disc.todayPoints>1?"s":"")+" · 🔥 "+disc.streak));
       box.append(strip);
       if(limit)box.append(node("div","day-strip-note","Ferme la plateforme. Limite de "+DAILY_SL_LIMIT+" SL par jour (heure NY) : ta règle, pas une règle de la formation."));
       container.append(box);
@@ -1319,7 +1317,7 @@
     const windowInfo=currentToi(),override=effectiveToiOverride(setup),ok=toiSatisfied(setup,windowInfo);
     const box=node("div","toi-box gate-item"+(ok?" valid":" wait"));
     // L’état détaillé de la TOI est déjà dans la ligne du haut : ici, seulement la correction manuelle.
-    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",(override?"Corrigé à la main ("+TOI_OVERRIDE_MINUTES+" min). ":"Détecté automatiquement (ligne du haut). ")+"Hors TOI = avertissement, pas de blocage."));
+    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",(override?"Corrigé à la main ("+TOI_OVERRIDE_MINUTES+" min). ":"")+"Hors TOI = avertissement seulement."));
     const choices=node("div","binary-choice"),current=override||(windowInfo.inside?"yes":"no");
     [["yes","OUI","yes"],["no","PAS ENCORE","wait-no"]].forEach(item=>{
       const button=setAction(makeButton("choice-btn "+item[2],item[1]),"toi-override");button.dataset.value=item[0];
@@ -1413,7 +1411,8 @@
     sticky.className="sticky "+verdict.type+(warnings.length?" warned":"");
     // Bouton « Trade évité » : compteur du jour, et il pulse quand le verdict dit d’attendre ou de ne pas entrer.
     const avoidBtn=document.getElementById("fomo-avoided"),count=document.getElementById("fomo-count"),today=app?avoidedCounts().today:0;
-    avoidBtn.classList.toggle("pulse",verdict.type==="wait"||verdict.type==="nogo");
+    // Pulse seulement au moment de la tentation : NO GO, ou WAIT une fois le SETUP validé (prix dans la zone, CSD pas encore là).
+    avoidBtn.classList.toggle("pulse",!!app&&(verdict.type==="nogo"||verdict.type==="wait"&&stageStatus("setup",setupFor())==="done"));
     count.hidden=!today;count.textContent="🛡 "+today;
     let title=verdict.stickyTitle;
     if((verdict.type==="nogo"||verdict.type==="wait")&&verdict.cause)title+=" — "+verdict.cause.message;
@@ -1582,8 +1581,7 @@
       tile.append(node("div","stat-tile-label",label),node("div","stat-tile-value",String(group.n)),node("div","stat-tile-sub",stats.total?Math.round(group.n*100/stats.total)+" %":"—"));tiles.append(tile);
     });
     wrap.append(tiles);
-    const avoided=avoidedCounts();
-    wrap.append(node("p","journal-summary","Trades évités : "+avoided.week+" cette semaine · "+avoided.total+" au total · "+stats.skips+" session"+(stats.skips>1?"s":"")+" sans trade"+(stats.gaps?" · "+stats.gaps+" écart"+(stats.gaps>1?"s":"")+" entre plan déclaré et verdict":"")+"."));
+    if(stats.gaps)wrap.append(node("p","journal-summary",stats.gaps+" écart"+(stats.gaps>1?"s":"")+" entre plan déclaré et verdict."));
     const actions=node("div","journal-actions");
     actions.append(setAction(makeButton("primary-btn","+ Ajouter un trade"),"journal-new"),setAction(makeButton("secondary-btn","Exporter"),"journal-export"));
     wrap.append(actions);
@@ -1600,7 +1598,7 @@
         const reason=AVOID_REASONS.find(r=>r.id===entry.reason);
         const item=setAction(makeButton("journal-item avoided","","Trade évité du "+fmtDate(entry.date)+" — toucher pour modifier"),"avoided-open",entry.id),top=node("div","journal-item-top");
         top.append(node("span","",fmtDate(entry.date)+" · "+entry.time+" NY"),node("span","badge avoided","Trade évité"),node("span","journal-item-r",reason?reason.label:""));
-        item.append(top,node("div","journal-item-sub","Retenu"+(reason?" · "+reason.label:"")));list.append(item);return;
+        item.append(top,node("div","journal-item-sub","Retenu"));list.append(item);return;
       }
       const category=entry.auto?entry.auto.category:"none",item=setAction(makeButton("journal-item"+(category==="none"?" alert":""),"","Modifier le trade "+(entry.num||"")),"journal-open",entry.id),top=node("div","journal-item-top");
       top.append(node("span","","#"+(entry.num||"–")+" · "+fmtDate(entry.date)+" "+entry.time+" NY"+(entry.sens?" · "+entry.sens:"")),node("span","badge "+category,categoryLabel(category)));
@@ -1695,7 +1693,7 @@
     if(entryInstant(v.date,v.time)===null){showToast("Date et heure d’entrée (NY) obligatoires.");return;}
     const rText=String(v.r||"").trim().replace(",",".");let r=null;
     if(rText){r=Number(rText);if(!Number.isFinite(r)){showToast("Résultat en R invalide.");return;}}
-    const before=earnedBadgeIds(),old=draft.id?app.journal.find(entry=>entry.id===draft.id):null,lookup=lookupVerdict(v.date,v.time);
+    const before=disciplineStats(),beforeBadges=earnedBadgeIds(),old=draft.id?app.journal.find(entry=>entry.id===draft.id):null,lookup=lookupVerdict(v.date,v.time);
     const entry=normalizeJournalEntry({
       id:old?old.id:uniqueId("j"),kind:"trade",createdAt:old?old.createdAt:isoNow(),updatedAt:isoNow(),date:v.date,time:v.time,
       sessionId:lookup&&lookup.sessionId||"",num:old?old.num:app.settings.nextTradeNum,sens:v.sens,biais:v.biais,contexte:v.contexte,smt:v.smt,
@@ -1708,12 +1706,11 @@
     else{app.journal.push(entry);app.settings.nextTradeNum=(entry.num||app.settings.nextTradeNum)+1;}
     if(pauseStarted){const setup=setupFor();STATE_QUESTIONS.forEach(question=>setup.traderState[question.id]=null);}
     saveNow();closeSheet();render();haptic(10);
-    const badge=newBadgeText(before);
-    showToast(pauseStarted?(app.settings.lossPauseMinutes?"Perte enregistrée : pause de "+app.settings.lossPauseMinutes+" min et question d’état à revalider.":"Perte enregistrée : question d’état à revalider.")+(badge?" "+badge:""):badge||"Trade enregistré.");
+    const feedback=disciplineFeedback(before,beforeBadges);
+    showToast((pauseStarted?(app.settings.lossPauseMinutes?"Perte enregistrée : pause de "+app.settings.lossPauseMinutes+" min et question d’état à revalider.":"Perte enregistrée : question d’état à revalider."):"Trade enregistré.")+(feedback?" "+feedback.charAt(0).toUpperCase()+feedback.slice(1)+".":""));
   }
   // ——— Discipline (gamification) : récompense le comportement, jamais le résultat en R ———
   // Tout est recalculé depuis le journal : rien de plus à stocker ni à synchroniser.
-  const XP_PER_LEVEL = 25;
   const BADGES = [
     // Orientés retenue : rien ne récompense le fait de prendre des trades.
     {id:"fomo1",icon:"🛡",label:"Premier trade évité",stat:"avoidedTotal",goal:1},
@@ -1726,27 +1723,34 @@
     {id:"fomo100",icon:"👑",label:"100 trades évités",stat:"avoidedTotal",goal:100}
   ];
   function disciplineStats(){
-    const days=new Map(),get=d=>{if(!days.has(d))days.set(d,{trades:0,bad:0,avoided:0,skip:0});return days.get(d);};
+    const days=new Map(),get=d=>{if(!days.has(d))days.set(d,{bad:0,avoided:0,skip:0,conform:0});return days.get(d);};
     let avoidedTotal=0,skipTotal=0;
     app.journal.forEach(e=>{
       if(!e.date)return;const d=get(e.date);
       if(e.kind==="avoided"){d.avoided++;avoidedTotal++;}
       else if(e.kind==="no_trade"){d.skip++;skipTotal++;}
-      else{d.trades++;if(!(e.auto&&e.auto.category==="ok"))d.bad++;}
+      else if(!(e.auto&&e.auto.category==="ok"))d.bad++;
+      // Trade conforme : +1 seulement si le plan est aussi déclaré respecté (sinon 0, sans casser la série).
+      else if(e.plan==="Oui")d.conform++;
     });
-    // Journée disciplinée = au moins une entrée et aucun trade hors process ou sans validation. Un jour sans entrée ne casse pas la série.
-    let points=0,streak=0,bestStreak=0;
+    // Série = jours avec au moins une entrée et aucun trade hors process ou sans validation. Un jour sans entrée ne la casse pas.
+    // Une journée n’a pas de valeur en soi : seules les actions rapportent des points.
+    const todayKey=todayNyKey();let points=0,todayPoints=0,streak=0,bestStreak=0;
     [...days.keys()].sort().forEach(key=>{
-      const d=days.get(key),clean=!d.bad;streak=clean?streak+1:0;bestStreak=Math.max(bestStreak,streak);
-      // Une journée n’a pas de valeur en soi : seules les actions rapportent. La série sert aux badges.
-      points+=Math.min(d.avoided,5)+Math.min(d.skip,1);
+      const d=days.get(key),dayPoints=Math.min(d.avoided,5)+Math.min(d.skip,1)+d.conform;
+      streak=d.bad?0:streak+1;bestStreak=Math.max(bestStreak,streak);
+      points+=dayPoints;if(key===todayKey)todayPoints=dayPoints;
     });
-    let run=0,conformBest=0,conformTotal=0;
-    sortedTrades().filter(e=>e.date).forEach(e=>{if(e.auto&&e.auto.category==="ok"){conformTotal++;run++;conformBest=Math.max(conformBest,run);}else run=0;});
-    points+=conformTotal; // trade conforme : +1 seulement, pour ne pas pousser à trader
-    const today=days.get(todayNyKey());
-    return {points:points,level:Math.floor(points/XP_PER_LEVEL)+1,levelProgress:points%XP_PER_LEVEL,streak:streak,bestStreak:bestStreak,
-      todayBroken:!!(today&&today.bad),conformRun:run,conformBest:conformBest,conformTotal:conformTotal,avoidedTotal:avoidedTotal,skipTotal:skipTotal};
+    const today=days.get(todayKey);
+    return {points:points,todayPoints:todayPoints,streak:streak,bestStreak:bestStreak,todayBroken:!!(today&&today.bad),avoidedTotal:avoidedTotal,skipTotal:skipTotal};
+  }
+  // Retour après une action : « +1 pt », série cassée, badge débloqué.
+  function disciplineFeedback(before,beforeBadges){
+    const after=disciplineStats(),parts=[],delta=after.points-before.points;
+    if(delta>0)parts.push("+"+delta+" pt"+(delta>1?"s":""));
+    if(after.todayBroken&&!before.todayBroken)parts.push("série remise à zéro");
+    const badge=newBadgeText(beforeBadges);if(badge)parts.push(badge);
+    return parts.join(" · ");
   }
   function earnedBadgeIds(){const s=disciplineStats();return new Set(BADGES.filter(b=>s[b.stat]>=b.goal).map(b=>b.id));}
   function newBadgeText(before){
@@ -1755,13 +1759,12 @@
   }
   function renderDisciplineCard(wrap){
     const s=disciplineStats(),card=node("section","disc-card"),head=node("div","disc-head");
-    head.append(node("div","disc-title","Discipline · niveau "+s.level),node("div","disc-points",s.points+" pts"));
-    const bar=node("div","disc-bar"),fill=node("div","disc-fill");fill.style.width=Math.round(s.levelProgress*100/XP_PER_LEVEL)+"%";bar.append(fill);
-    card.append(head,bar,node("div","disc-next",(XP_PER_LEVEL-s.levelProgress)+" pts avant le niveau "+(s.level+1)));
+    head.append(node("div","disc-title","Discipline"),node("div","disc-points",s.points+" pts"));
+    card.append(head,node("div","disc-next","+"+s.todayPoints+" pt"+(s.todayPoints>1?"s":"")+" aujourd’hui"));
     const stats=node("div","disc-stats");
     [["🔥 "+s.streak,"jour"+(s.streak>1?"s":"")+" sans trade merdique","record "+s.bestStreak],
      ["🛡 "+s.avoidedTotal,"trade"+(s.avoidedTotal>1?"s":"")+" évité"+(s.avoidedTotal>1?"s":""),"au total"],
-     ["🎯 "+s.conformRun,"conforme"+(s.conformRun>1?"s":"")+" d’affilée","record "+s.conformBest]].forEach(([value,label,sub])=>{
+     ["🧘 "+s.skipTotal,"session"+(s.skipTotal>1?"s":"")+" sans trade","pas de setup"]].forEach(([value,label,sub])=>{
       const t=node("div","disc-stat");t.append(node("div","disc-stat-value",value),node("div","disc-stat-label",label),node("div","disc-stat-sub",sub));stats.append(t);
     });
     card.append(stats);
@@ -1770,16 +1773,16 @@
     const badges=node("div","disc-badges");
     earned.forEach(b=>badges.append(node("span","disc-badge got",b.icon+" "+b.label)));
     if(next)badges.append(node("span","disc-badge","🔒 "+next.label+" · "+s[next.stat]+"/"+next.goal));
-    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme +1 · pas de setup +1 (1 par jour). Un trade hors process ou sans validation remet la série à zéro. Le résultat en R ne rapporte rien."));
+    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme avec plan respecté +1 · pas de setup +1 (1 par jour). Un trade hors process ou sans validation remet la série à zéro. Le résultat en R ne rapporte rien."));
     wrap.append(card);
   }
   let avoidedId=null;
   function logAvoided(){
-    const before=earnedBadgeIds(),p=newYorkParts(new Date()),entry=normalizeJournalEntry({id:uniqueId("j"),kind:"avoided",createdAt:isoNow(),updatedAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setupFor().sessionId,reason:""},0);
+    const before=disciplineStats(),beforeBadges=earnedBadgeIds(),p=newYorkParts(new Date()),entry=normalizeJournalEntry({id:uniqueId("j"),kind:"avoided",createdAt:isoNow(),updatedAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setupFor().sessionId,reason:""},0);
     app.journal.push(entry);saveNow();haptic([10,40,10]);
     const btn=document.getElementById("fomo-avoided");btn.classList.remove("pop");void btn.offsetWidth;btn.classList.add("pop");
     avoidedId=entry.id;render();openSheet("avoided");
-    const badge=newBadgeText(before);if(badge)showToast(badge);
+    const feedback=disciplineFeedback(before,beforeBadges);showToast("Trade évité"+(feedback?" · "+feedback:""));
   }
   function renderAvoidedSheet(){
     const entry=app.journal.find(item=>item.id===avoidedId&&item.kind==="avoided");
@@ -1787,7 +1790,7 @@
     const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment(),counts=avoidedCounts();
     document.getElementById("sheet-title").textContent="Trade évité";
     const s=disciplineStats(),done=node("div","notice green");
-    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · niveau "+s.level+" ("+s.points+" pts) · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" sans trade merdique."));frag.append(done);
+    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · "+s.points+" pts · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" sans trade merdique."));frag.append(done);
     frag.append(node("div","field-label","Ce qui t’a tenté · facultatif"));
     const row=node("div","chip-row");
     AVOID_REASONS.forEach(reason=>{const b=setAction(makeButton("chip",reason.label),"avoided-reason",reason.id);b.setAttribute("aria-pressed",String(entry.reason===reason.id));row.append(b);});
@@ -2055,9 +2058,9 @@
     setup.noSetup=true;setup.entryState=null;
     const p=newYorkParts(new Date()),parts=phraseParts(setup);
     removeJournalEntries(entry=>entry.kind==="no_trade"&&entry.sessionId===setup.sessionId);
-    const before=earnedBadgeIds();
+    const before=disciplineStats(),beforeBadges=earnedBadgeIds();
     app.journal.push(normalizeJournalEntry({id:uniqueId("j"),kind:"no_trade",createdAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setup.sessionId,summary:parts?parts.text:"Aucun contexte écrit."},0));
-    saveNow();expandedStage="context";render();haptic([12,30,12]);const badge=newBadgeText(before);showToast(badge||"Pas de setup : ne pas trader est une bonne décision.");
+    saveNow();expandedStage="context";render();haptic([12,30,12]);const feedback=disciplineFeedback(before,beforeBadges);showToast("Pas de setup : bonne décision"+(feedback?" · "+feedback:"."));
   }
   function applyContextChip(fieldId,value){
     const setup=setupFor();if(setup.noSetup||!CONTEXT_FIELDS.some(field=>field.id===fieldId)||!value)return;
