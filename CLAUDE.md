@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.9.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v25`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.10.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v26`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -41,7 +41,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 - 4 étapes, dans cet ordre depuis 1.8.0 : `context` (1 CONTEXTE), `setup` (2 SETUP), `state` (3 ÉTAT), `entry` (4, affichée « CSD »). ÉTAT est posé juste avant le CSD ; CONTEXTE n'est plus verrouillé ; « Pas de setup » est toujours disponible.
 - ÉTAT = une seule question : « Est-ce que cette action est cohérente avec le trader que je suis en train de devenir ? » (NON → incident `identity`, NO GO pour la session). **Garde-fou ajouté** (vidéo Astra Mindset sur discipline et identité), **pas une règle de la formation**. Remise à zéro à chaque session et après une perte.
-- `getVerdict()` : incidents et pause après perte (`block`), puis champs de contexte obligatoires (POI, DOL), critères `c_htf_zone` et `c_liquidity_taken`, puis question d'état, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
+- `getVerdict()` : incidents, pause après perte et limite de 2 SL du jour NY (`block`, `dailySlReached()`), puis champs de contexte obligatoires (POI, DOL), critères `c_htf_zone` et `c_liquidity_taken`, puis question d'état, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
 - `verdict.warnings` (signaux d'abstention) : **avertissement seulement, ne bloque jamais**.
 - TOI unique (`TOI_CHECK`, `currentToi()`) : `REFERENCE_WINDOWS` (XX:45 → XX:15) + ouverture RTH 09:30 → 09:45 NY. **Hors TOI = avertissement dans `verdict.warnings`, jamais bloquant** (Pierre : une entrée à XX:40 peut arriver). Correction manuelle valable 60 min. Plus de champ TOI texte : la phrase et le journal reprennent la fenêtre détectée. Plus de choix « Modèle » : Time & Price est le processus, le First Presented FVG est un type de CSD coché à l'étape 4.
 - Narrative HTF retirée de l'écran à la demande de Pierre (souvent floue en live). La fiche garde l'étape HTF IOF : c'est un choix de Pierre, pas une règle de la formation.
@@ -53,11 +53,15 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Pré-remplissage des champs non modifiés : contexte, SMT, confirmation (d'après le type de CSD coché : 1st presented FVG > MSS > IFVG > CSD), plan respecté. Le biais n'est plus pré-rempli, sauf depuis d'anciens `snap` qui contiennent une narrative.
 - Une perte récente (< 6 h) déclenche la pause et remet à zéro les questions d'état.
 - Bouton « FOMO évité » (barre du bas, v1.9.0) : un tap = une entrée `avoided` horodatée, puis une feuille avec le motif facultatif (Marché / Discord / Résultat), l'heure modifiable et la suppression. Compteurs jour / semaine (lundi, NY) / total dans le bandeau et le journal. Pas d'entrée automatique sur NO GO.
-- Bandeau du jour : FOMO évités, trades, R, SL. **Limite de 2 SL par jour (`DAILY_SL_LIMIT`)** : règle de Pierre, pas de la formation → notice rouge « ferme la plateforme » + avertissement dans `verdict.warnings`, non bloquant. Le jour = heure de New York (choix de Pierre).
-- Les trades « Sans validation » ont un cadre d'alerte dans la liste.
+- Bandeau du jour unique (`renderDayNotices`) : FOMO évités, trades, R, SL ; il passe en rouge à la limite. **Limite de 2 SL par jour (`DAILY_SL_LIMIT`)** : règle de Pierre, pas de la formation → **NO GO jusqu'au lendemain** (jour = heure de New York, choix de Pierre).
+- Les trades « Sans validation » ont un cadre d'alerte dans la liste. Les cases Conformes / Hors process / Sans validation montrent des nombres de trades ; les R sont dans le Dashboard.
+- Tous les réglages sont sous ⚙ : Garde-fous (pause, objectif), Journal (numéro, format de copie), champs personnalisés. « Nouvelle session » est sous « Pas de setup », plus dans la barre du bas. La TOI détaillée n'est que dans la ligne du haut ; dans CONTEXTE il reste la correction OUI / PAS ENCORE.
 - Onglet Journal → sous-onglets « Trades » / « Dashboard ». Le Dashboard reprend celui de l'Excel (`tradeStats()`, trades avec R et date seulement) : nombre de trades, winrate hors 0 R, expectancy, profit factor, Sharpe par trade (écart-type d'échantillon, non annualisé), RR moyen (gain moyen / perte moyenne), drawdown max depuis 0, pertes consécutives max (un BE remet à zéro) ; courbes R cumulés et drawdown ; filtre début/fin (KPI et courbes seulement) ; calendrier mensuel et bilan des 12 derniers mois sur tous les trades. Vérifié contre l'Excel : mêmes valeurs. Filtres en mémoire (`dashState`), non sauvegardés.
 - Contexte : ordre POI → DOL → case TOI automatique → invalidation (choix de Pierre ; la fiche liste DOL avant POI, l'exemple 2 cherche le POI H1 d'abord).
-- Export : **exactement les 14 colonnes de l'Excel de Pierre** (`JOURNAL_COLUMNS`). Les champs personnalisés ne sont pas exportés, sauf demande contraire. « Copier les nouveaux » produit du TSV pour Google Sheets ; « Exporter CSV » produit un CSV avec BOM.
+- Bouton « Exporter » → feuille avec deux choix :
+  - **Fichier Excel `.xlsx`** (`exportJournalXlsx`, écrit à la main : ZIP sans compression + SpreadsheetML, sans dépendance ; plus de CSV depuis 1.10.0). Colonnes : ID, **Type** (Trade | FOMO évité), puis les 13 autres colonnes de l'Excel de Pierre (`XLSX_COLUMNS`). Une ligne par trade et par FOMO évité, ordre chronologique ; le motif du FOMO va dans « Comportement / Psycho ». Dates, heures et R en vraies valeurs Excel. Vérifié dans Excel.
+  - « Copier les nouveaux trades » : TSV des 14 colonnes (`JOURNAL_COLUMNS`) pour Google Sheets, trades seulement.
+  - Les champs personnalisés ne sont pas exportés, sauf demande contraire.
 
 ## Règles de contenu
 
