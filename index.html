@@ -327,7 +327,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.12.0";
+  const APP_VERSION = "1.12.1";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -938,7 +938,9 @@
       if(manual)showToast(cfg.lastError);
     }finally{
       syncState.running=false;
-      if(journalSignature()!==before&&currentView==="journal"&&!activeSheet)render();
+      // Rafraîchit aussi le validateur (bandeau du jour, points), sauf pendant la saisie d’un champ.
+      const typing=document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+      if(journalSignature()!==before&&!activeSheet&&(currentView==="journal"||!typing))render();
       if(activeSheet==="config")renderConfig();
       if(syncState.again){syncState.again=false;scheduleSync(1500);}
     }
@@ -2504,7 +2506,8 @@
   window.addEventListener("online",()=>{updateConnectionStatus();syncIfStale();});
   window.addEventListener("offline",updateConnectionStatus);
   window.addEventListener("android-bridge-ready",()=>{syncAndroidToiNotifications(false);if(activeSheet==="config")renderConfig();});
-  window.addEventListener("android-notification-permission-changed",()=>{syncAndroidToiNotifications(false);if(activeSheet==="config")renderConfig();});
+  // L’APK envoie cet événement à chaque retour au premier plan (onResume) : la WebView ne déclenche pas toujours visibilitychange.
+  window.addEventListener("android-notification-permission-changed",()=>{syncAndroidToiNotifications(false);syncIfStale();if(activeSheet==="config")renderConfig();});
   window.addEventListener("beforeinstallprompt",event=>{
     event.preventDefault();deferredInstallPrompt=event;
   });
@@ -2537,6 +2540,8 @@
   window.addEventListener("focus",syncIfStale);
   // Historique des verdicts : envoyé au plus toutes les 10 min pour limiter les commits.
   setInterval(()=>{if(!document.hidden&&loadSyncConfig()&&lastLogAt()>syncState.lastPushedLogAt)void syncNow(false);},10*60000);
+  // Relecture régulière quand l’appli reste ouverte : une suppression faite sur l’autre appareil arrive en 2 min au plus (pas d’écriture si rien n’a changé).
+  setInterval(()=>{if(!document.hidden)syncIfStale();},2*60000);
   void syncNow(false);
   window.PTV={
     getVerdict:getVerdict,save:saveNow,exportData:()=>clone(app),resetCurrentSetup:resetCurrentSetup,

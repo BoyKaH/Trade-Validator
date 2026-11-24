@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.12.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v28`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.12.1"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v29`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -33,7 +33,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Réglages de synchro et jeton dans la clé `ptv_sync`, **hors de `app`** : jamais dans les sauvegardes JSON ni dans le fichier synchronisé.
 - Synchronisés : `journal`, `journalFields`, `tombstones`, `verdictLog`, `nextTradeNum`. Non synchronisés : session en cours, incidents, réglages d'appareil.
 - `mergeSyncData()` : fusion par id, `updatedAt` le plus récent gagne ; `exported` et `lossAt` sont conservés d'un côté ou de l'autre. Pas d'écriture si l'empreinte (`canonicalSyncSig`) est identique. Conflit de sha (409/422) → relecture et nouvel essai (3 fois).
-- Déclencheurs : ouverture de l'appli, retour au premier plan ou focus (au plus toutes les 20 s), 3 s après un changement du journal, passage en arrière-plan, retour du réseau, et toutes les 10 min pour l'historique des verdicts.
+- Déclencheurs : ouverture de l'appli, retour au premier plan ou focus (au plus toutes les 20 s), 3 s après un changement du journal, passage en arrière-plan, retour du réseau, **relecture toutes les 2 min quand l'appli est visible**, et toutes les 10 min pour l'historique des verdicts. Dans l'APK, le retour au premier plan passe aussi par l'événement `android-notification-permission-changed` (envoyé par `onResume`) : la WebView ne déclenche pas toujours `visibilitychange` (bug vu en 1.12.0 : une suppression faite sur le PC restait visible sur le téléphone).
+- Après une fusion qui change le journal, l'écran est re-rendu (aussi le validateur), sauf si une feuille est ouverte ou un champ en cours de saisie.
 - Testé avec un faux GitHub en mémoire, pas encore avec un vrai jeton.
 - Toute nouvelle donnée doit passer par `normalizeApp()` et les fonctions `normalize*()`. La sauvegarde JSON (`validateBackupRoot`) accepte les versions 5 à 8.
 
