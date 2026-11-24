@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.8.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v24`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.9.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v25`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -21,7 +21,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 - Clé actuelle `ptv_v8` (version 8). Migration automatique depuis `ptv_v7` … `ptv_v1` dans `loadApp()`.
 - `app.setups[currentId]` : session en cours. Champs : `traderState` (`identity` seulement depuis 1.8.0 ; les anciennes réponses `moneyTarget` / `clearMind` / `acceptsZero` sont ignorées à la migration), `criterionStates`, `context` (`poi`, `dol`, `invalidation` ; `narrative` et `toi` gardés pour les anciennes sessions mais plus affichés depuis 1.5.0 / 1.6.0), `toiOverride` / `toiOverrideAt`, `csdObs` (type de CSD : `displacement`, `ifvg`, `mss`, `breaker`, `fpfvg`), `flags`, `noSetup`, `incidentIds`. L'ancien champ `model` a été retiré : `model:"fpfvg"` migre en `csdObs.fpfvg`.
-- `app.journal` : entrées `kind: "trade"` ou `"no_trade"`. Un trade stocke `auto` (verdict retrouvé : `category` `ok` | `bad` | `none`), `lossAt`, `exported`, `custom`.
+- `app.journal` : entrées `kind: "trade"`, `"no_trade"` ou `"avoided"` (FOMO évité : `date`, `time` NY, `reason` `market` | `discord` | `result` | vide). Un trade stocke `auto` (verdict retrouvé : `category` `ok` | `bad` | `none`), `lossAt`, `exported`, `custom`.
 - `app.journalFields` : champs personnalisés (`text`, `number`, `yesno`, `choice`).
 - `app.verdictLog` : historique horodaté des verdicts avec un `snap` du contexte. Maximum 3000 entrées et 150 jours. Battement toutes les 30 min si l'appli est visible.
 - `app.settings` : `lossPauseMinutes` (10), `dailyTargetR` (0 = désactivé), `csvFormat` (`fr` | `std`), `nextTradeNum`, plus les réglages TOI et Android.
@@ -52,6 +52,9 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - `lookupVerdict(date, heure NY)` retrouve le dernier verdict avant la minute d'entrée. Au-delà de 2 h, la validation est périmée (« Sans validation »). Un avertissement s'affiche si le verdict a changé à ±2 min.
 - Pré-remplissage des champs non modifiés : contexte, SMT, confirmation (d'après le type de CSD coché : 1st presented FVG > MSS > IFVG > CSD), plan respecté. Le biais n'est plus pré-rempli, sauf depuis d'anciens `snap` qui contiennent une narrative.
 - Une perte récente (< 6 h) déclenche la pause et remet à zéro les questions d'état.
+- Bouton « FOMO évité » (barre du bas, v1.9.0) : un tap = une entrée `avoided` horodatée, puis une feuille avec le motif facultatif (Marché / Discord / Résultat), l'heure modifiable et la suppression. Compteurs jour / semaine (lundi, NY) / total dans le bandeau et le journal. Pas d'entrée automatique sur NO GO.
+- Bandeau du jour : FOMO évités, trades, R, SL. **Limite de 2 SL par jour (`DAILY_SL_LIMIT`)** : règle de Pierre, pas de la formation → notice rouge « ferme la plateforme » + avertissement dans `verdict.warnings`, non bloquant. Le jour = heure de New York (choix de Pierre).
+- Les trades « Sans validation » ont un cadre d'alerte dans la liste.
 - Onglet Journal → sous-onglets « Trades » / « Dashboard ». Le Dashboard reprend celui de l'Excel (`tradeStats()`, trades avec R et date seulement) : nombre de trades, winrate hors 0 R, expectancy, profit factor, Sharpe par trade (écart-type d'échantillon, non annualisé), RR moyen (gain moyen / perte moyenne), drawdown max depuis 0, pertes consécutives max (un BE remet à zéro) ; courbes R cumulés et drawdown ; filtre début/fin (KPI et courbes seulement) ; calendrier mensuel et bilan des 12 derniers mois sur tous les trades. Vérifié contre l'Excel : mêmes valeurs. Filtres en mémoire (`dashState`), non sauvegardés.
 - Contexte : ordre POI → DOL → case TOI automatique → invalidation (choix de Pierre ; la fiche liste DOL avant POI, l'exemple 2 cherche le POI H1 d'abord).
 - Export : **exactement les 14 colonnes de l'Excel de Pierre** (`JOURNAL_COLUMNS`). Les champs personnalisés ne sont pas exportés, sauf demande contraire. « Copier les nouveaux » produit du TSV pour Google Sheets ; « Exporter CSV » produit un CSV avec BOM.

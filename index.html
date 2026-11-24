@@ -92,6 +92,7 @@
     .sticky-status{display:flex;align-items:center;gap:9px;flex:1;min-width:0;padding:5px 2px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.sticky-copy{flex:1;min-width:0}.sticky-title,.sticky-sub{display:block}.sticky-title{font-size:12px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sticky-sub{font-size:11.5px;color:#c0c0c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
     .icon-btn{min-width:44px;height:44px;padding:0 9px;border-radius:10px;border:1px solid #4a4a4a;background:#191919;color:#bbb;font-size:15px;cursor:pointer;display:grid;place-items:center}
     .icon-btn.reset{font-size:11px;font-weight:800;min-width:82px;line-height:1.1}
+    .icon-btn.fomo{font-size:11px;font-weight:850;min-width:62px;line-height:1.1;border-color:#1e654c;background:#0a1c15;color:#68d6af}
     .sheet-overlay{position:fixed;z-index:180;inset:0;background:rgba(0,0,0,.72);opacity:0;pointer-events:none;transition:opacity .2s}
     .sheet-overlay.open{opacity:1;pointer-events:auto}
     .sheet{position:fixed;z-index:181;left:0;right:0;bottom:0;max-height:92vh;background:#191919;border:1px solid #333;border-bottom:0;border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .25s ease;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
@@ -147,6 +148,10 @@
     .notice.orange{border-color:#8a6420;background:#271c08;color:#f0c36a}
     .notice.red{border-color:#9a3939;background:#2a0e0e;color:#ff9b9b}
     .notice.grey{border-color:#333;background:#141414;color:#aaa}
+    .notice.green{border-color:#1e654c;background:#0a1c15;color:#9fe3c8}
+    .day-strip{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+    .day-strip .good{color:#68d6af;font-weight:850}.day-strip .bad{color:#f08080;font-weight:850}
+    .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
     .side-col{display:none}
     .no-setup-wrap{margin:0 0 8px}
     .no-setup-btn{margin-top:0;font-size:13px}
@@ -212,7 +217,8 @@
     .journal-item-r.pos{color:#68d6af}.journal-item-r.neg{color:#f08080}
     .journal-item-sub{font-size:12.5px;color:#9a9a9a;margin-top:5px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .badge{display:inline-block;flex:0 0 auto;font-size:10.5px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;padding:3px 6px;border-radius:5px;background:#292929;color:#bbb}
-    .badge.ok{background:#0a2a1d;color:#68d6af}.badge.bad{background:#2f1010;color:#f08080}.badge.none{background:#262626;color:#bbb}.badge.skip{background:#232323;color:#ddd}.badge.gap{background:#322207;color:#e3a33f;margin-right:6px}
+    .badge.ok{background:#0a2a1d;color:#68d6af}.badge.bad{background:#2f1010;color:#f08080}.badge.none{background:#262626;color:#bbb}.badge.skip{background:#232323;color:#ddd}.badge.gap{background:#322207;color:#e3a33f;margin-right:6px}.badge.avoided{background:#0a2a1d;color:#68d6af}
+    .journal-item.avoided{border-color:#1e654c}.journal-item.alert{border-color:#8a6420;background:#1c1406}
     .lookup-box{border:1px solid #3a3a3a;border-radius:11px;background:#121212;padding:10px 11px;margin-bottom:12px;font-size:13px;line-height:1.45;color:#c0c0c0}
     .lookup-box.ok{border-color:#1e654c;background:#0a1c15}.lookup-box.bad{border-color:#7e3232;background:#1f0b0b}.lookup-box.none{border-color:#555}
     .lookup-title{font-size:14.5px;font-weight:850;color:#eee;margin-bottom:3px}
@@ -236,7 +242,7 @@
       .sticky-inner{max-width:1180px;padding-left:22px;padding-right:22px}.sheet{left:50%;right:auto;width:min(720px,calc(100vw - 40px));transform:translate(-50%,105%)}.sheet.open{transform:translate(-50%,0)}
     }
     @media (min-width:1050px){.criteria-list{grid-template-columns:1fr}.gate-meta{align-items:flex-start}}
-    @media (max-width:370px){.objective{font-size:11px}.sticky-inner{gap:5px;padding-left:7px;padding-right:7px}.icon-btn.reset{min-width:70px;font-size:11px}.progress-label{font-size:11px}.timing-market{max-width:118px}}
+    @media (max-width:370px){.objective{font-size:11px}.sticky-inner{gap:5px;padding-left:7px;padding-right:7px}.icon-btn.reset{min-width:70px;font-size:11px}.icon-btn.fomo{min-width:54px}.progress-label{font-size:11px}.timing-market{max-width:118px}}
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
   </style>
 </head>
@@ -272,6 +278,7 @@
         <span class="status-dot" aria-hidden="true"></span>
         <span class="sticky-copy"><span class="sticky-title" id="sticky-title"></span><span class="sticky-sub" id="sticky-sub"></span></span>
       </button>
+      <button class="icon-btn fomo" type="button" id="fomo-avoided" aria-label="J’ai évité un FOMO" title="J’ai évité un FOMO">FOMO<br>évité</button>
       <button class="icon-btn" type="button" id="config-open" aria-label="Réglages" title="Réglages">⚙</button>
       <button class="icon-btn reset" type="button" id="reset-current" aria-label="Nouvelle session">Nouvelle<br>session</button>
     </div>
@@ -298,7 +305,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.8.0";
+  const APP_VERSION = "1.9.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -326,6 +333,9 @@
     {id:"c_setup_liquidity",shortTitle:"CSD conforme à mon modèle",description:"Le changement d’orderflow attendu par mon modèle est présent : c’est le setup.",section:"entry",subgroup:"trigger",type:"boolean",behavior:"wait",systemRole:"core"},
     {id:"c_smt",shortTitle:"SMT présent",description:"Confluence facultative, sans effet sur l’autorisation.",section:"setup",subgroup:"confluence",type:"boolean",behavior:"bonus",systemRole:"bonus"}
   ];
+  // FOMO évité : compteur de retenue, ce qui a tenté est facultatif.
+  const AVOID_REASONS = [{id:"market",label:"Marché"},{id:"discord",label:"Discord"},{id:"result",label:"Résultat"}];
+  const DAILY_SL_LIMIT = 2; // règle de Pierre (garde-fou), pas une règle de la formation
   const DEFAULT_SETTINGS = {lossPauseMinutes:10,dailyTargetR:0,csvFormat:"fr",nextTradeNum:1,haptics:true,anticipationEffect:"block",toiNotifications:false,toiLeadMinutes:15,toiAlertWindows:["london-star-0","london-star-1","ny-am-star-0","ny-am-star-1","ny-pm-star-0","ny-pm-star-1"]};
   // Fenêtres TOI de référence en heure locale de New York, indépendantes du verdict.
   const TOI_NEAR_MINUTES = 15;
@@ -680,13 +690,14 @@
     };
   }
   function normalizeJournalEntry(raw,index){
-    const kind=raw&&raw.kind==="no_trade"?"no_trade":"trade";
+    const kind=raw&&(raw.kind==="no_trade"||raw.kind==="avoided")?raw.kind:"trade";
     const entry={
       id:safeId(raw&&raw.id,"j",index),kind:kind,createdAt:safeText(raw&&raw.createdAt,40,isoNow()),updatedAt:safeText(raw&&raw.updatedAt,40,""),
       date:/^\d{4}-\d{2}-\d{2}$/.test(raw&&raw.date)?raw.date:"",time:/^\d{2}:\d{2}$/.test(raw&&raw.time)?raw.time:"",
       sessionId:safeText(raw&&raw.sessionId,100,"")
     };
     if(kind==="no_trade"){entry.summary=safeText(raw&&raw.summary,600,"");return entry;}
+    if(kind==="avoided"){entry.reason=AVOID_REASONS.some(r=>r.id===(raw&&raw.reason))?raw.reason:"";return entry;}
     const rawR=raw?raw.r:null,r=rawR===null||rawR===undefined||rawR===""||!Number.isFinite(Number(rawR))?null:Number(rawR);
     Object.assign(entry,{
       num:Number.isSafeInteger(Number(raw&&raw.num))&&Number(raw.num)>0?Number(raw.num):null,
@@ -1014,6 +1025,7 @@
     verdict.warnings=WARNING_FLAGS.filter(flag=>setup.flags[flag.id]).map(flag=>flag.text);
     // TOI : avertissement seulement, jamais bloquant (une entrée à XX:40 reste possible).
     if(!toiSatisfied(setup,currentToi()))verdict.warnings.unshift("Hors TOI (XX:45 → XX:15 ou Open 09:30)");
+    if(dayGuard().sl>=DAILY_SL_LIMIT)verdict.warnings.unshift(DAILY_SL_LIMIT+" SL aujourd’hui : limite atteinte, ferme la plateforme");
     return verdict;
   }
   function stageStatus(stage,setup){
@@ -1194,11 +1206,18 @@
     if(!last)return null;const until=last+minutes*60000;return Date.now()<until?{until:until}:null;
   }
   function todayTrades(){const key=todayNyKey();return app.journal.filter(entry=>entry.kind==="trade"&&entry.date===key);}
+  function weekStartNyKey(){const p=newYorkParts(new Date()),d=new Date(Date.UTC(p.year,p.month-1,p.day));d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7);return d.toISOString().slice(0,10);}
+  function avoidedCounts(){
+    const today=todayNyKey(),week=weekStartNyKey(),list=app.journal.filter(entry=>entry.kind==="avoided");
+    return {today:list.filter(e=>e.date===today).length,week:list.filter(e=>e.date>=week&&e.date<=today).length,total:list.length};
+  }
   function dayGuard(){
     const trades=todayTrades(),be=trades.filter(entry=>entry.r===0).length,sum=trades.reduce((total,entry)=>total+(entry.r||0),0),notes=[];
+    const sl=trades.filter(entry=>entry.r!==null&&entry.r<0).length;
+    if(sl>=DAILY_SL_LIMIT)notes.push({tone:"red",title:sl+" SL aujourd’hui : limite atteinte",text:"Ferme la plateforme. Limite de "+DAILY_SL_LIMIT+" SL par jour : ta règle, pas une règle de la formation."});
     if(be>=2)notes.push({tone:"orange",title:be+" BE aujourd’hui",text:"Arrêter après deux BE ou une séance compliquée reste rationnel (live du 12/11)."});
     if(app.settings.dailyTargetR>0&&sum>=app.settings.dailyTargetR)notes.push({tone:"orange",title:"Objectif du jour atteint ("+fmtR(sum)+")",text:"Tu as validé ton objectif : t’arrêter ici est cohérent."});
-    return {count:trades.length,be:be,sum:sum,notes:notes};
+    return {count:trades.length,be:be,sl:sl,sum:sum,notes:notes,avoided:avoidedCounts()};
   }
   function snapshotFor(setup){
     const windowInfo=currentToi();
@@ -1256,7 +1275,15 @@
     const pause=lossPause(),guard=dayGuard();
     if(pause){const n=node("div","notice red");n.append(node("strong","","Pause après une perte"),document.createTextNode("Reprise possible à "+PARIS_TIME_FORMATTER.format(new Date(pause.until))+" (Paris). Quitte les charts en attendant."));container.append(n);}
     guard.notes.forEach(item=>{const n=node("div","notice "+item.tone);n.append(node("strong","",item.title),document.createTextNode(item.text));container.append(n);});
-    if(guard.count&&!guard.notes.length)container.append(node("div","notice grey",guard.count+" trade"+(guard.count>1?"s":"")+" aujourd’hui · "+fmtR(guard.sum)));
+    const a=guard.avoided.today;
+    if(guard.count||a){
+      const strip=node("div","notice "+(a&&!guard.sl?"green":"grey")+" day-strip");
+      strip.append(node("span","","Aujourd’hui :"));
+      if(a)strip.append(node("span","good","✓ "+a+" FOMO évité"+(a>1?"s":"")));
+      if(guard.count)strip.append(node("span","",guard.count+" trade"+(guard.count>1?"s":"")+" · "+fmtR(guard.sum)));
+      if(guard.sl)strip.append(node("span","bad",guard.sl+" SL / "+DAILY_SL_LIMIT));
+      container.append(strip);
+    }
   }
   function renderToiStatus(setup){
     const windowInfo=currentToi(),override=effectiveToiOverride(setup),ok=toiSatisfied(setup,windowInfo);
@@ -1519,21 +1546,28 @@
       tile.append(node("div","stat-tile-label",label),node("div","stat-tile-value",fmtR(group.r)),node("div","stat-tile-sub",group.n+" trade"+(group.n>1?"s":"")));tiles.append(tile);
     });
     wrap.append(tiles);
-    wrap.append(node("p","journal-summary",stats.skips+" session"+(stats.skips>1?"s":"")+" sans trade (bonnes décisions)"+(stats.gaps?" · "+stats.gaps+" écart"+(stats.gaps>1?"s":"")+" entre plan déclaré et verdict":"")+". Le classement vient du verdict affiché à ton heure d’entrée."));
+    const avoided=avoidedCounts();
+    wrap.append(node("p","journal-summary","FOMO évités : "+avoided.week+" cette semaine · "+avoided.total+" au total. "+stats.skips+" session"+(stats.skips>1?"s":"")+" sans trade (bonnes décisions)"+(stats.gaps?" · "+stats.gaps+" écart"+(stats.gaps>1?"s":"")+" entre plan déclaré et verdict":"")+". Le classement vient du verdict affiché à ton heure d’entrée."));
     wrap.append(setAction(makeButton("primary-btn","+ Ajouter un trade"),"journal-new"));
     const pending=app.journal.filter(entry=>entry.kind==="trade"&&!entry.exported).length,actions=node("div","journal-actions");
     actions.append(setAction(makeButton("secondary-btn","Copier les nouveaux ("+pending+")"),"journal-copy"),setAction(makeButton("secondary-btn","Exporter CSV"),"journal-csv"));
     wrap.append(actions,setAction(makeButton("secondary-btn","Champs personnalisés et réglages"),"journal-fields"));
     const entries=app.journal.slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)||String(b.createdAt).localeCompare(String(a.createdAt)));
     const list=node("div","journal-list");
-    if(!entries.length)list.append(node("p","empty-copy","Aucun trade enregistré. Remplis le journal après chaque trade : l’appli retrouve le verdict affiché à ton heure d’entrée."));
+    if(!entries.length)list.append(node("p","empty-copy","Aucune entrée. Touche « FOMO évité » en bas quand tu te retiens d’entrer. Remplis le journal après chaque trade : l’appli retrouve le verdict affiché à ton heure d’entrée."));
     entries.forEach(entry=>{
       if(entry.kind==="no_trade"){
         const item=setAction(makeButton("journal-item","","Session sans trade du "+fmtDate(entry.date)+" — toucher pour supprimer"),"journal-skip",entry.id),top=node("div","journal-item-top");
         top.append(node("span","",fmtDate(entry.date)+" · "+entry.time+" NY"),node("span","badge skip","Pas de setup"),node("span","journal-item-r","0 trade"));
         item.append(top,node("div","journal-item-sub","Bonne décision · "+(entry.summary||"")));list.append(item);return;
       }
-      const category=entry.auto?entry.auto.category:"none",item=setAction(makeButton("journal-item","","Modifier le trade "+(entry.num||"")),"journal-open",entry.id),top=node("div","journal-item-top");
+      if(entry.kind==="avoided"){
+        const reason=AVOID_REASONS.find(r=>r.id===entry.reason);
+        const item=setAction(makeButton("journal-item avoided","","FOMO évité du "+fmtDate(entry.date)+" — toucher pour modifier"),"avoided-open",entry.id),top=node("div","journal-item-top");
+        top.append(node("span","",fmtDate(entry.date)+" · "+entry.time+" NY"),node("span","badge avoided","FOMO évité"),node("span","journal-item-r",reason?reason.label:""));
+        item.append(top,node("div","journal-item-sub","Tu t’es contenu"+(reason?" · tenté par : "+reason.label:"")));list.append(item);return;
+      }
+      const category=entry.auto?entry.auto.category:"none",item=setAction(makeButton("journal-item"+(category==="none"?" alert":""),"","Modifier le trade "+(entry.num||"")),"journal-open",entry.id),top=node("div","journal-item-top");
       top.append(node("span","","#"+(entry.num||"–")+" · "+fmtDate(entry.date)+" "+entry.time+" NY"+(entry.sens?" · "+entry.sens:"")),node("span","badge "+category,categoryLabel(category)));
       top.append(node("span","journal-item-r"+(entry.r>0?" pos":entry.r<0?" neg":""),entry.r===null?"R ?":fmtR(entry.r)));
       const sub=node("div","journal-item-sub");
@@ -1641,9 +1675,37 @@
     saveNow();closeSheet();render();haptic(10);
     showToast(pauseStarted?(app.settings.lossPauseMinutes?"Perte enregistrée : pause de "+app.settings.lossPauseMinutes+" min et question d’état à revalider.":"Perte enregistrée : question d’état à revalider."):"Trade enregistré.");
   }
+  let avoidedId=null;
+  function logAvoided(){
+    const p=newYorkParts(new Date()),entry=normalizeJournalEntry({id:uniqueId("j"),kind:"avoided",createdAt:isoNow(),updatedAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setupFor().sessionId,reason:""},0);
+    app.journal.push(entry);saveNow();haptic([10,40,10]);
+    avoidedId=entry.id;render();openSheet("avoided");
+  }
+  function renderAvoidedSheet(){
+    const entry=app.journal.find(item=>item.id===avoidedId&&item.kind==="avoided");
+    if(!entry){closeSheet();return;}
+    const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment(),counts=avoidedCounts();
+    document.getElementById("sheet-title").textContent="FOMO évité";
+    const done=node("div","notice green");done.append(node("strong","","✓ Tu t’es contenu"),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total."));frag.append(done);
+    frag.append(node("div","field-label","Ce qui t’a tenté · facultatif"));
+    const row=node("div","chip-row");
+    AVOID_REASONS.forEach(reason=>{const b=setAction(makeButton("chip",reason.label),"avoided-reason",reason.id);b.setAttribute("aria-pressed",String(entry.reason===reason.id));row.append(b);});
+    frag.append(row);
+    const g=node("div","form-grid");
+    [["date","Date (NY)","date",entry.date],["time","Heure (NY)","time",entry.time]].forEach(([key,label,type,value])=>{
+      const wrap=node("div","field"),lab=node("label","field-label",label),input=node("input","text-input");
+      input.type=type;input.value=value;input.id="av-"+key;input.dataset.avoided=key;lab.htmlFor=input.id;wrap.append(lab,input);g.append(wrap);
+    });
+    frag.append(g,setAction(makeButton("primary-btn","OK"),"avoided-close"),setAction(makeButton("danger-btn","Supprimer (appui par erreur)"),"avoided-delete"));
+    body.replaceChildren(frag);
+  }
+  function updateAvoided(changes){
+    const entry=app.journal.find(item=>item.id===avoidedId&&item.kind==="avoided");if(!entry)return;
+    Object.assign(entry,changes,{updatedAt:isoNow()});saveNow();renderAvoidedSheet();
+  }
   function requestDeleteJournal(id){
     const entry=app.journal.find(item=>item.id===id);if(!entry)return;
-    const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":"Le trade #"+(entry.num||"")+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
+    const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":entry.kind==="avoided"?"Ce FOMO évité du "+fmtDate(entry.date)+" à "+entry.time+" NY sera retiré du compteur.":"Le trade #"+(entry.num||"")+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
     confirmAction("Supprimer cette entrée ?",text,()=>{removeJournalEntries(item=>item.id===id);saveNow();if(activeSheet)closeSheet();render();showToast("Entrée supprimée.");},"Supprimer");
   }
   async function shareOrDownload(blob,filename,mime,title){
@@ -1830,11 +1892,11 @@
   }
   function openSheet(mode){
     activeSheet=mode;document.getElementById("sheet-overlay").classList.add("open");document.getElementById("sheet").classList.add("open");document.body.style.overflow="hidden";
-    if(mode==="schedule")renderSchedule();else if(mode==="verdict")renderVerdictDetails();else if(mode==="journal-form")renderJournalForm();else if(mode==="journal-fields")renderJournalFields();else if(mode==="copy")renderCopySheet();else renderConfig();
+    if(mode==="schedule")renderSchedule();else if(mode==="verdict")renderVerdictDetails();else if(mode==="journal-form")renderJournalForm();else if(mode==="journal-fields")renderJournalFields();else if(mode==="copy")renderCopySheet();else if(mode==="avoided")renderAvoidedSheet();else renderConfig();
     setTimeout(()=>document.getElementById("sheet-close").focus(),30);
   }
   function closeSheet(){
-    const refresh=activeSheet==="config"||String(activeSheet).startsWith("journal")||activeSheet==="copy";activeSheet=null;journalDraft=null;copyPayload=null;
+    const refresh=activeSheet==="config"||String(activeSheet).startsWith("journal")||activeSheet==="copy"||activeSheet==="avoided";activeSheet=null;journalDraft=null;copyPayload=null;avoidedId=null;
     document.getElementById("sheet-overlay").classList.remove("open");document.getElementById("sheet").classList.remove("open");document.body.style.overflow="";
     if(refresh)render();
   }
@@ -2133,6 +2195,7 @@
     else if(action==="journal-new")openJournalForm(null);
     else if(action==="journal-open")openJournalForm(id);
     else if(action==="journal-skip")requestDeleteJournal(id);
+    else if(action==="avoided-open"){avoidedId=id;openSheet("avoided");}
     else if(action==="journal-copy")void copyNewTrades();
     else if(action==="journal-csv")void exportJournalCsv();
     else if(action==="journal-fields")openSheet("journal-fields");
@@ -2160,6 +2223,7 @@
     currentView=button.dataset.view==="journal"?"journal":"validator";render();window.scrollTo(0,0);haptic(6);
   });
   document.getElementById("config-open").addEventListener("click",()=>openSheet("config"));
+  document.getElementById("fomo-avoided").addEventListener("click",logAvoided);
   document.getElementById("verdict-open").addEventListener("click",()=>openSheet("verdict"));
   document.getElementById("schedule-open").addEventListener("click",()=>openSheet("schedule"));
   document.getElementById("reset-current").addEventListener("click",requestResetCurrent);
@@ -2195,6 +2259,9 @@
       app.settings.toiAlertWindows=allToiWindowIds(false).filter(windowId=>selected.has(windowId));
       saveNow();syncAndroidToiNotifications(true);renderConfig();
     }
+    else if(action==="avoided-reason"){const entry=app.journal.find(item=>item.id===avoidedId);if(entry){updateAvoided({reason:entry.reason===target.dataset.id?"":target.dataset.id});haptic(6);}}
+    else if(action==="avoided-close")closeSheet();
+    else if(action==="avoided-delete"){if(avoidedId)requestDeleteJournal(avoidedId);}
     else if(action==="journal-save")saveJournalDraft();
     else if(action==="journal-delete"){if(journalDraft&&journalDraft.id)requestDeleteJournal(journalDraft.id);}
     else if(action==="jf-add")addJournalField();
@@ -2209,6 +2276,9 @@
   });
   document.getElementById("sheet-body").addEventListener("change",event=>{
     if(event.target.id==="backup-import-file"){void prepareBackupImport(event.target);return;}
+    const avKey=event.target.dataset.avoided;
+    if(avKey==="date"&&/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)){updateAvoided({date:event.target.value});return;}
+    if(avKey==="time"&&/^\d{2}:\d{2}$/.test(event.target.value)){updateAvoided({time:event.target.value});return;}
     const jfield=event.target.dataset.jfield;
     if(journalDraft&&(jfield==="date"||jfield==="time")){journalDraft.values[jfield]=event.target.value;applyLookupPrefill();renderJournalForm();return;}
     if(journalDraft&&jfield==="plan"){journalDraft.values.plan=event.target.value;journalDraft.touched.add("plan");renderJournalForm();return;}
