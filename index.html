@@ -327,7 +327,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.12.1";
+  const APP_VERSION = "1.12.2";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -381,8 +381,8 @@
     toiHint:"Début / fin de cycle XX:45 → XX:15 · Open 09:30 → 09:45 NY"
   };
   const CONTEXT_FIELDS = [
-    {id:"poi",label:"POI — ma zone de travail",help:"Où je cherche le setup. Une liquidité peut être un POI.",placeholder:"ex. AM High + FVG baissiers",required:true,chips:["FVG H1","Breaker H1","Old PD Array","Opening Price","London High","London Low","AM High","AM Low","Data High","Data Low"]},
-    {id:"dol",label:"DOL — ma cible",help:"La liquidité visée depuis ce POI.",placeholder:"ex. PDL",required:true,chips:["PDH","PDL","London High","London Low","AM High","AM Low","Asian High","Asian Low","Data High","Data Low"]},
+    {id:"poi",label:"POI — ma zone de travail",help:"Où je cherche le setup. Une liquidité peut être un POI.",placeholder:"ex. AM High + FVG baissiers",required:true,chips:["FVG H1","Breaker H1","Old PD Array","Key Level","Opening Price","PWH","PWL","PDH","PDL","Asian High","Asian Low","London High","London Low","AM High","AM Low","Data High","Data Low"]},
+    {id:"dol",label:"DOL — ma cible",help:"La liquidité visée depuis ce POI.",placeholder:"ex. PDL",required:true,chips:["PWH","PWL","PDH","PDL","Asian High","Asian Low","London High","London Low","AM High","AM Low","Data High","Data Low","Old PD Array","Key Level","Opening Price"]},
     {id:"invalidation",label:"Invalidation du scénario",help:"Ce qui me fait arrêter de chercher.",placeholder:"ex. NQ et ES reprennent leurs highs",required:false,chips:[]}
   ];
   const WARNING_FLAGS = [

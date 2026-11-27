@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.12.1"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v29`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.12.2"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v30`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -61,6 +61,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Les trades « Sans validation » ont un cadre d'alerte dans la liste. Les cases Conformes / Hors process / Sans validation montrent des nombres de trades ; les R sont dans le Dashboard.
 - Tous les réglages sont sous ⚙ : Garde-fous (pause, objectif), Journal (numéro, format de copie), champs personnalisés. « Nouvelle session » est sous « Pas de setup », plus dans la barre du bas. La TOI détaillée n'est que dans la ligne du haut ; dans CONTEXTE il reste la correction OUI / PAS ENCORE.
 - Onglet Journal → sous-onglets « Trades » / « Dashboard ». Le Dashboard reprend celui de l'Excel (`tradeStats()`, trades avec R et date seulement) : nombre de trades, winrate hors 0 R, expectancy, profit factor, Sharpe par trade (écart-type d'échantillon, non annualisé), RR moyen (gain moyen / perte moyenne), drawdown max depuis 0, pertes consécutives max (un BE remet à zéro) ; courbes R cumulés et drawdown ; filtre début/fin (KPI et courbes seulement) ; calendrier mensuel et bilan des 12 derniers mois sur tous les trades. Vérifié contre l'Excel : mêmes valeurs. Filtres en mémoire (`dashState`), non sauvegardés.
+- Chips POI et DOL (v1.12.2) : repères de la fiche (Old PD Array, Key Level, Opening Price, PXH/PXL) + PWH, PWL, PDH, PDL, Asian, London, AM, Data High/Low ; POI aussi FVG H1 et Breaker H1.
 - Contexte : ordre POI → DOL → case TOI automatique → invalidation (choix de Pierre ; la fiche liste DOL avant POI, l'exemple 2 cherche le POI H1 d'abord).
 - Bouton « Exporter » → feuille avec deux choix :
   - **Fichier Excel `.xlsx`** (`exportJournalXlsx`, écrit à la main : ZIP sans compression + SpreadsheetML, sans dépendance ; plus de CSV depuis 1.10.0). Colonnes : ID, **Type** (Trade | Trade évité), puis les 13 autres colonnes de l'Excel de Pierre (`XLSX_COLUMNS`). Une ligne par trade pris et par trade évité, ordre chronologique ; la raison du trade évité va dans « Comportement / Psycho ». Dates, heures et R en vraies valeurs Excel. Vérifié dans Excel.
