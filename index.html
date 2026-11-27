@@ -139,6 +139,23 @@
     .chip{min-height:36px;border:1px solid #3a3a3a;border-radius:999px;background:#141414;color:#b5b5b5;padding:0 12px;font-size:12.5px;font-weight:700;cursor:pointer}
     .chip[aria-pressed="true"]{border-color:#8a6420;background:#271c08;color:#f0c36a}
     .toi-box{margin-bottom:12px}
+    .process-card.htf{background:#0f1822;border-color:#1f3a55;border-left:3px solid #4a9be0}.process-card.htf .section-title{color:#8cc4f5}
+    .chip-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+    .chip-group-title{flex:0 0 100%;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#7f8c95;margin:0 0 -1px 2px}
+    .chip-pair{display:inline-flex;align-items:stretch;min-height:36px;border:1px solid #3a3a3a;border-radius:999px;background:#141414;overflow:hidden}
+    .chip-pair-name{display:flex;align-items:center;padding:0 8px 0 12px;color:#8f8f8f;font-size:12.5px;font-weight:700;white-space:nowrap}
+    .chip-pair-btn{min-width:34px;padding:0 10px;border:0;border-left:1px solid #3a3a3a;background:transparent;color:#c5c5c5;font-size:12.5px;font-weight:850;cursor:pointer}
+    .chip-pair-btn[aria-pressed="true"]{background:#271c08;color:#f0c36a}.chip-pair-btn:disabled{cursor:not-allowed;opacity:.6}
+    .toi-timeline{background:var(--panel);border:1px solid #2c2c2c;border-radius:14px;padding:10px 11px;margin-bottom:8px}
+    .tl-head{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;font-weight:800;color:#9fb0bb;letter-spacing:.04em}
+    .tl-status{color:#9a9a9a;text-align:right}.tl-status.in{color:#64b4ff}
+    .tl-track{position:relative;height:28px;margin:9px 0 4px;background:#1c1c1c;border-radius:7px}
+    .tl-win{position:absolute;top:0;bottom:0;background:#14304d;border:1px solid #24527f;border-radius:5px}
+    .tl-win.open{background:#3a2a0a;border-color:#8a6420}.tl-win.inside{background:#1d4a75;border-color:#64b4ff}
+    .tl-now{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:#ef6464;border-radius:1px}
+    .tl-ticks{position:relative;height:15px;font-size:11px;color:#7d7d7d}.tl-ticks span{position:absolute;transform:translateX(-50%)}
+    .tl-legend{font-size:11px;color:#7d7d7d;margin-top:2px;line-height:1.4}
+    .toi-fix{display:block;margin-top:6px;padding:4px 0;border:0;background:none;color:#9fb0bb;font-size:11.5px;text-decoration:underline;cursor:pointer;text-align:left}
     .continue-btn{margin:4px 0 0;color:#eee;border-color:#555}
     .choice-btn[aria-pressed="true"].wait-no{border-color:#8a6420;background:var(--orange-bg);color:#f0c36a}
     .phrase-card{border:1px solid #79591e;background:#1c1508;border-radius:12px;padding:12px;margin-bottom:8px}
@@ -261,7 +278,7 @@
       body{padding:24px 22px 116px}.app{max-width:1180px}.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}.top-copy{text-align:right;margin-top:0}.phrase{display:block}
       .validator-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;align-items:start}.process-col{display:grid;gap:10px;align-content:start}.side-col{display:block;position:sticky;top:12px}.phrase-inline{display:none}.journal-view{max-width:760px;margin:0 auto}.no-setup-wrap{margin:0}
       .progress,.incident-banner{grid-column:1/-1}.progress{top:0;margin:0 0 2px;padding:8px;border:1px solid #252525;border-radius:12px}
-      .process-card{margin:0;padding:14px}.process-card.collapsed:not(.locked) .stage-body{display:block}.process-card.collapsed:not(.locked) .section-head{margin-bottom:11px}.section-head{margin-bottom:11px}
+      .process-card,.toi-timeline{margin:0}.process-card{padding:14px}.process-card.collapsed:not(.locked) .stage-body{display:block}.process-card.collapsed:not(.locked) .section-head{margin-bottom:11px}.section-head{margin-bottom:11px}
       .sticky-inner{max-width:1180px;padding-left:22px;padding-right:22px}.sheet{left:50%;right:auto;width:min(720px,calc(100vw - 40px));transform:translate(-50%,105%)}.sheet.open{transform:translate(-50%,0)}
     }
     @media (min-width:1050px){.criteria-list{grid-template-columns:1fr}.gate-meta{align-items:flex-start}}
@@ -327,7 +344,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.12.5";
+  const APP_VERSION = "1.13.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -380,10 +397,12 @@
     windows:REFERENCE_WINDOWS.concat([{id:"open-rth",name:"OPEN RTH",tone:"ny",days:[1,2,3,4,5],preferred:true,windows:[[9*60+30,9*60+45]]}]),
     toiHint:"Début / fin de cycle XX:45 → XX:15 · Open 09:30 → 09:45 NY"
   };
+  // Niveaux en paires High / Low : [nom affiché, valeur High, valeur Low] (v1.13.0, choix de Pierre).
+  const LEVEL_PAIRS = [["PW","PWH","PWL"],["PD","PDH","PDL"],["Asian","Asian High","Asian Low"],["London","London High","London Low"],["AM","AM High","AM Low"],["Data","Data High","Data Low"],["Cycle 90 préc.","Cycle 90 précédent High","Cycle 90 précédent Low"]];
   const CONTEXT_FIELDS = [
-    {id:"poi",label:"POI — ma zone de travail",help:"Où je cherche le setup. Une liquidité peut être un POI.",placeholder:"ex. AM High + FVG baissiers",required:true,chips:["FVG H1","Breaker H1","Old PD Array","Key Level","Opening Price","PWH","PWL","PDH","PDL","Asian High","Asian Low","London High","London Low","AM High","AM Low","Data High","Data Low"]},
-    {id:"dol",label:"DOL — ma cible",help:"La liquidité visée depuis ce POI.",placeholder:"ex. PDL",required:true,chips:["PWH","PWL","PDH","PDL","Asian High","Asian Low","London High","London Low","AM High","AM Low","Data High","Data Low","Old PD Array","Key Level","Opening Price"]},
-    {id:"invalidation",label:"Invalidation du scénario",help:"Ce qui me fait arrêter de chercher.",placeholder:"ex. NQ et ES reprennent leurs highs",required:false,chips:[]}
+    {id:"poi",label:"POI — ma zone de travail",help:"Où je cherche le setup. Une liquidité peut être un POI.",placeholder:"ex. AM High + FVG baissiers",required:true,chipGroups:[{title:"Zones",items:["FVG H1","Breaker H1"]},{title:"Niveaux",pairs:LEVEL_PAIRS,items:["09:30"]}]},
+    {id:"dol",label:"DOL — ma cible",help:"La liquidité visée depuis ce POI.",placeholder:"ex. PDL",required:true,chipGroups:[{title:"Niveaux",pairs:LEVEL_PAIRS,items:["09:30"]}]},
+    {id:"invalidation",label:"Invalidation du scénario",help:"Ce qui me fait arrêter de chercher.",placeholder:"ex. NQ et ES reprennent leurs highs",required:false,chipGroups:[]}
   ];
   const WARNING_FLAGS = [
     {id:"smtBoth",text:"SMT aux highs ET aux lows, ou HTF contre l’orderflow intraday",hint:"Risque de ping-pong entre liquidités (live du 19/11)."},
@@ -552,6 +571,7 @@
         if(currentView==="validator"&&focused&&focused.dataset&&focused.dataset.contextField)refreshLive();else render();
       }
       if(!document.hidden)logVerdict(setup,currentVerdict||verdict,true);
+      refreshToiTimeline();
     }
   }
   function isPlainObject(value){return value!==null&&typeof value==="object"&&!Array.isArray(value);}
@@ -1315,31 +1335,63 @@
       container.append(box);
     }
   }
-  function renderToiStatus(setup){
-    const windowInfo=currentToi(),override=effectiveToiOverride(setup),ok=toiSatisfied(setup,windowInfo);
-    const box=node("div","toi-box gate-item"+(ok?" valid":" wait"));
-    // L’état détaillé de la TOI est déjà dans la ligne du haut : ici, seulement la correction manuelle.
-    box.append(node("div","gate-title","Je suis dans ma TOI ?"),node("div","gate-description",(override?"Corrigé à la main ("+TOI_OVERRIDE_MINUTES+" min). ":"")+"Hors TOI = avertissement seulement."));
-    const choices=node("div","binary-choice"),current=override||(windowInfo.inside?"yes":"no");
-    [["yes","OUI","yes"],["no","PAS ENCORE","wait-no"]].forEach(item=>{
-      const button=setAction(makeButton("choice-btn "+item[2],item[1]),"toi-override");button.dataset.value=item[0];
-      button.setAttribute("aria-pressed",String(current===item[0]));button.disabled=setup.noSetup;choices.append(button);
-    });
-    box.append(choices);return box;
+  // Frise TOI : visuel seulement (v1.13.0). 4 h autour de l’heure NY, fenêtres de TOI_CHECK, trait = maintenant.
+  // Remplace la case OUI / PAS ENCORE ; la correction manuelle reste en petit lien. Hors TOI = avertissement seulement.
+  function toiTimelineKey(setup){return String(Math.floor(Date.now()/60000))+"|"+(effectiveToiOverride(setup)||"")+"|"+setup.noSetup;}
+  function renderToiTimeline(){const box=node("section","toi-timeline");box.id="toi-timeline";fillToiTimeline(box);return box;}
+  function fillToiTimeline(box){
+    const setup=setupFor(),now=new Date(),p=newYorkParts(now),nowMin=p.hour*60+p.minute+(p.second||0)/60;
+    const span=240,start=Math.floor((nowMin-60)/30)*30,end=start+span,pct=m=>((m-start)/span*100).toFixed(2)+"%";
+    const dow=d=>new Date(Date.UTC(p.year,p.month-1,p.day+d)).getUTCDay(),wrapMin=m=>((Math.round(m)%1440)+1440)%1440;
+    box.dataset.key=toiTimelineKey(setup);box.textContent="";
+    const info=currentToi(),ok=toiSatisfied(setup,info),override=effectiveToiOverride(setup);
+    const head=node("div","tl-head");let status;
+    if(info.current)status=node("span","tl-status in","TOI en cours · fin dans "+durationLabel((info.current.endAt-now.getTime())/60000));
+    else if(info.next)status=node("span","tl-status","Prochaine TOI dans "+durationLabel((info.next.startAt-now.getTime())/60000));
+    else status=node("span","tl-status","Aucune TOI prévue");
+    head.append(node("span","","TOI · NY"),status);box.append(head);
+    const track=node("div","tl-track");
+    [-1,0,1].forEach(d=>TOI_CHECK.windows.forEach(session=>{
+      if(!session.days.includes(dow(d)))return;
+      session.windows.forEach(([a,b])=>{
+        const A=a+d*1440,B=b+d*1440;if(B<=start||A>=end)return;
+        const win=node("div","tl-win"+(session.id==="open-rth"?" open":"")+(nowMin>=A&&nowMin<B?" inside":""));
+        win.style.left=pct(Math.max(A,start));win.style.width=((Math.min(B,end)-Math.max(A,start))/span*100).toFixed(2)+"%";win.title=hm(wrapMin(A))+" → "+hm(wrapMin(B))+" NY";track.append(win);
+      });
+    }));
+    const marker=node("div","tl-now");marker.style.left=pct(nowMin);track.append(marker);box.append(track);
+    const ticks=node("div","tl-ticks");
+    for(let m=Math.ceil(start/60)*60;m<=end;m+=60){const pos=(m-start)/span*100;if(pos<5||pos>95)continue;const t=node("span","",hm(wrapMin(m)));t.style.left=pos.toFixed(2)+"%";ticks.append(t);}
+    box.append(ticks,node("div","tl-legend","Bleu : XX:45 → XX:15 · jaune : open 09:30 → 09:45 · trait rouge : maintenant"));
+    let fixText,fixValue;
+    if(override){fixText="Correction manuelle active ("+(override==="yes"?"dans ma TOI":"hors TOI")+") · annuler";fixValue=override;}
+    else if(ok){fixText="Corriger : je ne suis pas dans ma TOI";fixValue="no";}
+    else{fixText="Corriger : je suis dans ma TOI";fixValue="yes";}
+    const fix=setAction(makeButton("toi-fix",fixText),"toi-override");fix.dataset.value=fixValue;fix.disabled=setup.noSetup;box.append(fix);
+  }
+  function refreshToiTimeline(){
+    const box=document.getElementById("toi-timeline");if(!box||!app)return;
+    if(box.dataset.key!==toiTimelineKey(setupFor()))fillToiTimeline(box);
   }
   function renderContextStage(container,setup){
-    const stage=stageCard("context",1,"CONTEXTE","Écris ton scénario avant de chercher le CSD.",setup),body=stage.body,off=setup.noSetup;
+    container.append(renderToiTimeline());
+    const stage=stageCard("context",1,"CONTEXTE HTF","Préparé avant la session (H1 / H4 / Daily) : ma zone et ma cible.",setup),body=stage.body,off=setup.noSetup;
+    stage.card.classList.add("htf");
     CONTEXT_FIELDS.forEach(field=>{
-      if(field.id==="invalidation")body.append(renderToiStatus(setup));
       const wrap=node("div","field"),inputId="ctx-"+field.id,label=node("label","field-label",field.label+(field.required?"":" · facultatif"));
       label.htmlFor=inputId;wrap.append(label);if(field.help)wrap.append(node("span","field-help",field.help));
       const value=setup.context[field.id],input=node("input","text-input"+(value.trim()?" filled":""));
       input.type="text";input.id=inputId;input.value=value;input.placeholder=field.placeholder;input.maxLength=300;input.autocomplete="off";
       input.disabled=off;input.dataset.contextField=field.id;input.setAttribute("enterkeyhint","done");wrap.append(input);
-      if(field.chips.length){
-        const parts=value.split(" + ").map(v=>v.trim()),chips=node("div","chips");
-        field.chips.forEach(chip=>{const button=setAction(makeButton("chip",chip),"context-chip",field.id);button.dataset.value=chip;button.setAttribute("aria-pressed",String(parts.includes(chip)));button.disabled=off;chips.append(button);});
-        wrap.append(chips);
+      if(field.chipGroups.length){
+        const parts=value.split(" + ").map(v=>v.trim());
+        const chipButton=(cls,text,chip,aria)=>{const button=setAction(makeButton(cls,text,aria),"context-chip",field.id);button.dataset.value=chip;button.setAttribute("aria-pressed",String(parts.includes(chip)));button.disabled=off;return button;};
+        field.chipGroups.forEach(group=>{
+          const row=node("div","chip-group");row.append(node("div","chip-group-title",group.title));
+          (group.pairs||[]).forEach(([name,high,low])=>{const pair=node("span","chip-pair");pair.append(node("span","chip-pair-name",name),chipButton("chip-pair-btn","H",high,high),chipButton("chip-pair-btn","L",low,low));row.append(pair);});
+          (group.items||[]).forEach(chip=>row.append(chipButton("chip",chip,chip)));
+          wrap.append(row);
+        });
       }
       body.append(wrap);
     });
@@ -1405,8 +1457,8 @@
     if(context){
       const label=context.querySelector(".section-state");if(label)label.textContent=stageStateLabel("context",setup,false);
       const next=context.querySelector(".continue-btn");if(next)next.hidden=setup.noSetup||!contextFieldsDone(setup);
-      const toi=context.querySelector(".toi-box");if(toi)toi.replaceWith(renderToiStatus(setup));
     }
+    refreshToiTimeline();
   }
   function renderSticky(verdict){
     const sticky=document.getElementById("sticky"),warnings=verdict.type==="conforme"||verdict.type==="premium"?(verdict.warnings||[]):[];

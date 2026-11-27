@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.12.5"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v33`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.13.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v34`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -59,9 +59,10 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Liste du journal : la raison d'un trade évité n'apparaît qu'à droite. Plus de pastille numérotée sur les cartes d'étape (les onglets du haut numérotent déjà).
 - Bandeau du jour unique (`renderDayNotices`) : trades évités, trades pris, R, SL ; il passe en rouge à la limite. **Limite de 2 SL par jour (`DAILY_SL_LIMIT`)** : règle de Pierre, pas de la formation → **NO GO jusqu'au lendemain** (jour = heure de New York, choix de Pierre).
 - Les trades « Sans validation » ont un cadre d'alerte dans la liste. Les cases Conformes / Hors process / Sans validation montrent des nombres de trades ; les R sont dans le Dashboard.
-- Tous les réglages sont sous ⚙ : Garde-fous (pause, objectif), Journal (format de copie), champs personnalisés. « Nouvelle session » est sous « Pas de setup », plus dans la barre du bas. La TOI détaillée n'est que dans la ligne du haut ; dans CONTEXTE il reste la correction OUI / PAS ENCORE.
+- Tous les réglages sont sous ⚙ : Garde-fous (pause, objectif), Journal (format de copie), champs personnalisés. « Nouvelle session » est sous « Pas de setup », plus dans la barre du bas. La TOI détaillée n'est que dans la ligne du haut ; la frise TOI porte la correction manuelle (petit lien).
 - Onglet Journal → sous-onglets « Trades » / « Dashboard ». Le Dashboard reprend celui de l'Excel (`tradeStats()`, trades avec R et date seulement) : nombre de trades, winrate hors 0 R, expectancy, profit factor, Sharpe par trade (écart-type d'échantillon, non annualisé), RR moyen (gain moyen / perte moyenne), drawdown max depuis 0, pertes consécutives max (un BE remet à zéro) ; courbes R cumulés et drawdown ; filtre début/fin (KPI et courbes seulement) ; calendrier mensuel et bilan des 12 derniers mois sur tous les trades. Vérifié contre l'Excel : mêmes valeurs. Filtres en mémoire (`dashState`), non sauvegardés.
-- Chips POI et DOL (v1.12.2) : repères de la fiche (Old PD Array, Key Level, Opening Price, PXH/PXL) + PWH, PWL, PDH, PDL, Asian, London, AM, Data High/Low ; POI aussi FVG H1 et Breaker H1.
+- Bloc « CONTEXTE HTF » teinté en bleu (v1.13.0, demande de Pierre). Chips en groupes (`chipGroups`) : POI « Zones » (FVG H1, Breaker H1) + « Niveaux » ; DOL « Niveaux ». Niveaux en paires H / L (`LEVEL_PAIRS` : PW, PD, Asian, London, AM, Data, Cycle 90 précédent) + chip « 09:30 ». Old PD Array, Key Level et Opening Price retirés à la demande de Pierre (repères de la fiche qu'il n'utilise pas).
+- Frise TOI (v1.13.0, `renderToiTimeline` / `refreshToiTimeline`) au-dessus du contexte : 4 h autour de l'heure NY, fenêtres `TOI_CHECK`, trait = maintenant, « Prochaine TOI dans N min ». **Visuel seulement.** Elle remplace la case OUI / PAS ENCORE ; la correction manuelle reste en petit lien.
 - Contexte : ordre POI → DOL → case TOI automatique → invalidation (choix de Pierre ; la fiche liste DOL avant POI, l'exemple 2 cherche le POI H1 d'abord).
 - Bouton « Exporter » → feuille avec deux choix :
   - **Fichier Excel `.xlsx`** (`exportJournalXlsx`, écrit à la main : ZIP sans compression + SpreadsheetML, sans dépendance ; plus de CSV depuis 1.10.0). Colonnes : ID, **Type** (Trade | Trade évité), puis les 13 autres colonnes de l'Excel de Pierre (`XLSX_COLUMNS`). Une ligne par trade pris et par trade évité, ordre chronologique ; la raison du trade évité va dans « Comportement / Psycho ». Dates, heures et R en vraies valeurs Excel. Vérifié dans Excel.
