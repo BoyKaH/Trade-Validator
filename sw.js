@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "pre-trade-validator-shell-v34";
+const CACHE_NAME = "pre-trade-validator-shell-v35";
 const CORE_ASSETS = [
   "./index.html",
   "./pre_trade_validator.html",

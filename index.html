@@ -189,7 +189,12 @@
     .disc-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
     .disc-badge{font-size:11.5px;font-weight:750;border:1px solid #333;border-radius:99px;padding:4px 9px;color:#999;background:#151515}
     .disc-badge.got{border-color:#1e654c;color:#9fe3c8;background:#0a1c15}
-    .disc-rules{margin-top:8px;font-size:11px;color:#7d968c;line-height:1.4}
+    .disc-rules{margin-top:8px;font-size:11px;color:#8fa89e;line-height:1.4}
+    .disc-more{margin-top:8px}.disc-more-summary{display:flex;align-items:center;min-height:36px;cursor:pointer;font-size:12px;font-weight:800;color:#9fe3c8;list-style:none}
+    .disc-more-summary::-webkit-details-marker{display:none}.disc-more-summary::before{content:"▸";margin-right:7px;transition:transform .15s}.disc-more[open] .disc-more-summary::before{transform:rotate(90deg)}
+    .disc-more .disc-badges{margin-top:2px}
+    .toi-indicator[hidden]{display:none}
+    .sticky.journal-mode{background:rgba(18,18,18,.96)}.sticky.journal-mode .sticky-status{visibility:hidden}
     .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
     .side-col{display:none}
     .no-setup-wrap{margin:0 0 8px}
@@ -344,7 +349,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.13.0";
+  const APP_VERSION = "1.14.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -540,6 +545,9 @@
     const minutes=Math.max(0,Math.ceil(totalMinutes)),hours=Math.floor(minutes/60),rest=minutes%60;
     return hours?hours+" h "+String(rest).padStart(2,"0")+" min":minutes+" min";
   }
+  function nyRange(startAt,endAt){
+    return NY_TIME_FORMATTER.format(new Date(startAt))+"–"+NY_TIME_FORMATTER.format(new Date(endAt))+" NY";
+  }
   function parisRange(startAt,endAt){
     return PARIS_TIME_FORMATTER.format(new Date(startAt))+"–"+PARIS_TIME_FORMATTER.format(new Date(endAt))+" Paris";
   }
@@ -553,13 +561,13 @@
     document.getElementById("timing-market").textContent=timing.market.open===null?"NQ · calendrier à actualiser":"NQ · "+(timing.market.open?"ouvert":"fermé")+(timing.market.provisional?" · prévisionnel":"")+(timing.market.holiday?" · "+timing.market.holiday:"");
     const indicator=document.getElementById("toi-indicator");let state="outside",preferred=false,text;
     if(toi.current){
-      state="inside";preferred=toi.current.preferred;text="TOI EN COURS — "+(preferred?"★ ":"")+toi.current.name+" · "+parisRange(toi.current.startAt,toi.current.endAt)+" · fin dans "+durationLabel((toi.current.endAt-now.getTime())/60000);
+      state="inside";preferred=toi.current.preferred;text="TOI EN COURS — "+(preferred?"★ ":"")+toi.current.name+" · "+nyRange(toi.current.startAt,toi.current.endAt)+" · fin dans "+durationLabel((toi.current.endAt-now.getTime())/60000);
     }else if(toi.next&&(toi.next.startAt-now.getTime())/60000<=TOI_NEAR_MINUTES){
-      state="near";preferred=toi.next.preferred;text="TOI PROCHE — "+(preferred?"★ ":"")+toi.next.name+" · "+parisRange(toi.next.startAt,toi.next.endAt)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
+      state="near";preferred=toi.next.preferred;text="TOI PROCHE — "+(preferred?"★ ":"")+toi.next.name+" · "+nyRange(toi.next.startAt,toi.next.endAt)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
     }else if(timing.market.open===false||timing.market.open===null){
       state="closed";text=timing.market.open===null?"TOI INDISPONIBLE — calendrier à actualiser":"TOI INDISPONIBLE — NQ fermé";
     }else if(toi.next){
-      preferred=toi.next.preferred;text="HORS TOI — prochain "+(preferred?"★ ":"")+toi.next.name+" · "+parisRange(toi.next.startAt,toi.next.endAt)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
+      preferred=toi.next.preferred;text="HORS TOI — prochain "+(preferred?"★ ":"")+toi.next.name+" · "+nyRange(toi.next.startAt,toi.next.endAt)+" · dans "+durationLabel((toi.next.startAt-now.getTime())/60000);
     }else text="HORS TOI — calendrier à actualiser";
     indicator.className="toi-indicator "+state+(preferred?" preferred":"");indicator.textContent=text;
     document.getElementById("ny-clock").textContent="NY · "+NY_TIME_FORMATTER.format(now);
@@ -1462,11 +1470,13 @@
   }
   function renderSticky(verdict){
     const sticky=document.getElementById("sticky"),warnings=verdict.type==="conforme"||verdict.type==="premium"?(verdict.warnings||[]):[];
-    sticky.className="sticky "+verdict.type+(warnings.length?" warned":"");
+    const journalMode=currentView==="journal";
+    // Dans le Journal, le verdict ne sert à rien : on garde seulement « Trade évité » et ⚙.
+    sticky.className="sticky "+(journalMode?"journal-mode":verdict.type+(warnings.length?" warned":""));
     // Bouton « Trade évité » : compteur du jour, et il pulse quand le verdict dit d’attendre ou de ne pas entrer.
     const avoidBtn=document.getElementById("fomo-avoided"),count=document.getElementById("fomo-count"),today=app?avoidedCounts().today:0;
     // Pulse seulement au moment de la tentation : NO GO, ou WAIT une fois le SETUP validé (prix dans la zone, CSD pas encore là).
-    avoidBtn.classList.toggle("pulse",!!app&&(verdict.type==="nogo"||verdict.type==="wait"&&stageStatus("setup",setupFor())==="done"));
+    avoidBtn.classList.toggle("pulse",!!app&&!journalMode&&(verdict.type==="nogo"||verdict.type==="wait"&&stageStatus("setup",setupFor())==="done"));
     count.hidden=!today;count.textContent="🛡 "+today;
     let title=verdict.stickyTitle;
     if((verdict.type==="nogo"||verdict.type==="wait")&&verdict.cause)title+=" — "+verdict.cause.message;
@@ -1484,6 +1494,8 @@
     const container=document.getElementById("main-content"),setup=setupFor(),verdict=getVerdict(setup),frag=document.createDocumentFragment();
     document.querySelectorAll("#view-tabs [data-view]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.view===currentView)));
     if(currentView==="journal")renderJournal(frag);else renderValidator(frag,setup);
+    // Dans le validateur, la frise TOI remplace la ligne TOI du haut (une seule source, en heure NY).
+    document.getElementById("toi-indicator").hidden=currentView==="validator";
     container.replaceChildren(frag);currentVerdict=verdict;renderSticky(verdict);logVerdict(setup,verdict,false);
   }
   // Ordre chronologique (date + heure NY) ; à égalité, ancien numéro puis id, pour un ordre identique sur tous les appareils.
@@ -1825,6 +1837,7 @@
     const now=earnedBadgeIds(),fresh=BADGES.filter(b=>now.has(b.id)&&!before.has(b.id));
     if(!fresh.length)return "";haptic([20,40,20,40,20]);return fresh[0].icon+" Badge débloqué : "+fresh[0].label;
   }
+  let discMoreOpen=false;
   function renderDisciplineCard(wrap){
     const s=disciplineStats(),card=node("section","disc-card"),head=node("div","disc-head");
     head.append(node("div","disc-title","Discipline"),node("div","disc-points",s.points+" pts"));
@@ -1841,7 +1854,10 @@
     const badges=node("div","disc-badges");
     earned.forEach(b=>badges.append(node("span","disc-badge got",b.icon+" "+b.label)));
     if(next)badges.append(node("span","disc-badge","🔒 "+next.label+" · "+s[next.stat]+"/"+next.goal));
-    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme avec plan respecté +1 · pas de setup +1 (1 par jour). Jour clean = au moins une entrée et aucun trade hors process ou sans validation ; sinon la série retombe à zéro. Le résultat en R ne rapporte rien."));
+    // Badges et règles repliés pour que la liste des trades remonte (v1.14.0). État gardé en mémoire tant que l’appli est ouverte.
+    const more=node("details","disc-more");more.open=discMoreOpen;more.addEventListener("toggle",()=>{discMoreOpen=more.open;});
+    more.append(node("summary","disc-more-summary","Badges et règles · "+earned.length+"/"+BADGES.length),badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme avec plan respecté +1 · pas de setup +1 (1 par jour). Jour clean = au moins une entrée et aucun trade hors process ou sans validation ; sinon la série retombe à zéro. Le résultat en R ne rapporte rien."));
+    card.append(more);
     wrap.append(card);
   }
   let avoidedId=null;
@@ -2148,7 +2164,20 @@
     if(setup[group][id])delete setup[group][id];else setup[group][id]=true;
     scheduleSave();expandedStage=stage;render();haptic(6);
   }
+  // Bouton retour (Android, navigateur, souris) : une entrée d’historique tant qu’une feuille ou une confirmation est ouverte.
+  // Retour ferme la couche du dessus au lieu de quitter l’appli (v1.14.0). Une seule entrée, quel que soit le nombre de couches.
+  let layerPushed=false,ignoreNextPop=false;
+  function anyLayerOpen(){return !!activeSheet||document.getElementById("confirm-overlay").classList.contains("open");}
+  function layerOpened(){if(layerPushed)return;try{history.pushState({ptvLayer:1},"");layerPushed=true;}catch(_){}}
+  function layerClosed(){if(!layerPushed||anyLayerOpen())return;layerPushed=false;ignoreNextPop=true;try{history.back();}catch(_){ignoreNextPop=false;}}
+  window.addEventListener("popstate",()=>{
+    if(ignoreNextPop){ignoreNextPop=false;return;}
+    layerPushed=false;
+    if(document.getElementById("confirm-overlay").classList.contains("open"))closeConfirm();else if(activeSheet)closeSheet();
+    if(anyLayerOpen())layerOpened();
+  });
   function openSheet(mode){
+    layerOpened();
     activeSheet=mode;document.getElementById("sheet-overlay").classList.add("open");document.getElementById("sheet").classList.add("open");document.body.style.overflow="hidden";
     if(mode==="schedule")renderSchedule();else if(mode==="verdict")renderVerdictDetails();else if(mode==="journal-form")renderJournalForm();else if(mode==="copy")renderCopySheet();else if(mode==="avoided")renderAvoidedSheet();else if(mode==="export")renderExportSheet();else renderConfig();
     setTimeout(()=>document.getElementById("sheet-close").focus(),30);
@@ -2157,6 +2186,7 @@
     const refresh=activeSheet==="config"||String(activeSheet).startsWith("journal")||activeSheet==="copy"||activeSheet==="avoided";activeSheet=null;journalDraft=null;copyPayload=null;avoidedId=null;
     document.getElementById("sheet-overlay").classList.remove("open");document.getElementById("sheet").classList.remove("open");document.body.style.overflow="";
     if(refresh)render();
+    layerClosed();
   }
   function cfgHeading(text,help){
     const frag=document.createDocumentFragment();frag.append(node("h3","cfg-heading",text));if(help)frag.append(node("p","cfg-help",help));return frag;
@@ -2434,9 +2464,9 @@
   function confirmAction(title,text,callback,label,tone){
     confirmCallback=callback;document.getElementById("confirm-title").textContent=title;document.getElementById("confirm-text").textContent=text;
     const confirmButton=document.getElementById("confirm-ok");confirmButton.textContent=label||"Confirmer";confirmButton.classList.toggle("neutral",tone==="neutral");document.getElementById("confirm-overlay").classList.add("open");
-    setTimeout(()=>document.getElementById("confirm-cancel").focus(),20);
+    layerOpened();setTimeout(()=>document.getElementById("confirm-cancel").focus(),20);
   }
-  function closeConfirm(){confirmCallback=null;document.getElementById("confirm-overlay").classList.remove("open");}
+  function closeConfirm(){confirmCallback=null;document.getElementById("confirm-overlay").classList.remove("open");layerClosed();}
 
   document.getElementById("main-content").addEventListener("click",event=>{
     const target=event.target.closest("[data-action]");if(!target)return;
