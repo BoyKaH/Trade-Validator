@@ -327,7 +327,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.12.4";
+  const APP_VERSION = "1.12.5";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -1434,8 +1434,19 @@
     if(currentView==="journal")renderJournal(frag);else renderValidator(frag,setup);
     container.replaceChildren(frag);currentVerdict=verdict;renderSticky(verdict);logVerdict(setup,verdict,false);
   }
+  // Ordre chronologique (date + heure NY) ; à égalité, ancien numéro puis id, pour un ordre identique sur tous les appareils.
+  function tradeOrder(a,b){return (a.date+a.time).localeCompare(b.date+b.time)||(a.num||0)-(b.num||0)||String(a.id).localeCompare(String(b.id));}
   function sortedTrades(){
-    return app.journal.filter(entry=>entry.kind==="trade").slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)||(a.num||0)-(b.num||0));
+    return app.journal.filter(entry=>entry.kind==="trade").slice().sort(tradeOrder);
+  }
+  // Numéro affiché d’un trade = son rang chronologique, depuis 1 (v1.12.5). Recalculé à chaque changement du journal :
+  // une suppression ou un trade ajouté dans le passé renumérote sans trou. Le champ « num » stocké n’est plus que l’ancien numéro.
+  let tradeNumCache={key:"",map:new Map()};
+  function tradeNum(entry){
+    if(!entry||entry.kind!=="trade")return "";
+    const trades=sortedTrades(),key=trades.map(t=>t.id+"@"+t.date+t.time).join("|");
+    if(key!==tradeNumCache.key)tradeNumCache={key:key,map:new Map(trades.map((t,i)=>[t.id,i+1]))};
+    return tradeNumCache.map.get(entry.id)||"";
   }
   function journalStats(){
     const trades=app.journal.filter(entry=>entry.kind==="trade"),groups={ok:{n:0,r:0},bad:{n:0,r:0},none:{n:0,r:0}};
@@ -1452,7 +1463,7 @@
     return trades.map(entry=>{
       const parts=entry.date.split("-"),day=parts.length===3?DAY_NAMES[new Date(Date.UTC(+parts[0],+parts[1]-1,+parts[2])).getUTCDay()]:"";
       const r=entry.r===null?"":fr?String(entry.r).replace(".",","):String(entry.r);
-      return [entry.num||"",entry.shotHtf,entry.shotLtf,parts.length===3?parts[2]+"/"+parts[1]+"/"+parts[0]:"",day,entry.time,entry.sens,entry.biais,entry.contexte,entry.smt,entry.confirmation,r,entry.psycho,entry.plan];
+      return [tradeNum(entry),entry.shotHtf,entry.shotLtf,parts.length===3?parts[2]+"/"+parts[1]+"/"+parts[0]:"",day,entry.time,entry.sens,entry.biais,entry.contexte,entry.smt,entry.confirmation,r,entry.psycho,entry.plan];
     });
   }
   // ——— Dashboard (reprend les statistiques de l’onglet Dashboard de l’Excel) ———
@@ -1507,7 +1518,7 @@
       const i=Math.max(0,Math.min(values.length-1,Math.round((px-L)/((W-L-R)/Math.max(1,values.length-1)))));
       cross.setAttribute("x1",x(i));cross.setAttribute("x2",x(i));dot.setAttribute("cx",x(i));dot.setAttribute("cy",y(values[i]));cross.style.display=dot.style.display="";
       const point=i?curve[i-1]:null;
-      tip.textContent=point?"#"+(point.entry.num||"–")+" · "+fmtDate(point.entry.date)+" · "+fmtR(point.entry.r)+" → "+(key==="dd"?"drawdown ":"cumul ")+fmtR(values[i]):"Départ · 0 R";
+      tip.textContent=point?"#"+(tradeNum(point.entry)||"–")+" · "+fmtDate(point.entry.date)+" · "+fmtR(point.entry.r)+" → "+(key==="dd"?"drawdown ":"cumul ")+fmtR(values[i]):"Départ · 0 R";
       tip.hidden=false;tip.style.left=Math.min(Math.max(0,(x(i)/W)*rect.width-70),rect.width-150)+"px";
     });
     svg.addEventListener("pointerleave",hide);
@@ -1602,8 +1613,8 @@
         top.append(node("span","",fmtDate(entry.date)+" · "+entry.time+" NY"),node("span","badge avoided","Trade évité"),node("span","journal-item-r",reason?reason.label:""));
         item.append(top,node("div","journal-item-sub","Retenu"));list.append(item);return;
       }
-      const category=entry.auto?entry.auto.category:"none",item=setAction(makeButton("journal-item"+(category==="none"?" alert":""),"","Modifier le trade "+(entry.num||"")),"journal-open",entry.id),top=node("div","journal-item-top");
-      top.append(node("span","","#"+(entry.num||"–")+" · "+fmtDate(entry.date)+" "+entry.time+" NY"+(entry.sens?" · "+entry.sens:"")),node("span","badge "+category,categoryLabel(category)));
+      const category=entry.auto?entry.auto.category:"none",item=setAction(makeButton("journal-item"+(category==="none"?" alert":""),"","Modifier le trade "+tradeNum(entry)),"journal-open",entry.id),top=node("div","journal-item-top");
+      top.append(node("span","","#"+(tradeNum(entry)||"–")+" · "+fmtDate(entry.date)+" "+entry.time+" NY"+(entry.sens?" · "+entry.sens:"")),node("span","badge "+category,categoryLabel(category)));
       top.append(node("span","journal-item-r"+(entry.r>0?" pos":entry.r<0?" neg":""),entry.r===null?"R ?":fmtR(entry.r)));
       const sub=node("div","journal-item-sub");
       if(hasPlanGap(entry))sub.append(node("span","badge gap","Écart"));
@@ -1814,7 +1825,7 @@
   }
   function requestDeleteJournal(id){
     const entry=app.journal.find(item=>item.id===id);if(!entry)return;
-    const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":entry.kind==="avoided"?"Ce trade évité du "+fmtDate(entry.date)+" à "+entry.time+" NY sera retiré du compteur.":"Le trade #"+(entry.num||"")+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
+    const text=entry.kind==="no_trade"?"Cette session sans trade sera retirée du journal.":entry.kind==="avoided"?"Ce trade évité du "+fmtDate(entry.date)+" à "+entry.time+" NY sera retiré du compteur.":"Le trade #"+tradeNum(entry)+" du "+fmtDate(entry.date)+" sera supprimé définitivement.";
     confirmAction("Supprimer cette entrée ?",text,()=>{removeJournalEntries(item=>item.id===id);saveNow();if(activeSheet)closeSheet();render();showToast("Entrée supprimée.");},"Supprimer");
   }
   async function shareOrDownload(blob,filename,mime,title){
@@ -1859,7 +1870,7 @@
   // Une ligne par trade et par FOMO évité, dans l’ordre chronologique. Colonne « Type » juste après l’ID.
   function xlsxJournalRows(){
     const entries=app.journal.filter(e=>(e.kind==="trade"||e.kind==="avoided")&&e.date)
-      .slice().sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)||(a.num||0)-(b.num||0));
+      .slice().sort(tradeOrder);
     return entries.map(e=>{
       const p=e.date.split("-"),day=DAY_NAMES[new Date(Date.UTC(+p[0],+p[1]-1,+p[2])).getUTCDay()];
       const date={date:e.date},time=e.time?{time:e.time}:"";
@@ -1867,7 +1878,7 @@
         const reason=AVOID_REASONS.find(r=>r.id===e.reason);
         return ["","Trade évité","","",date,day,time,"","","","","","",reason?"Retenu · "+reason.label:"Retenu",""];
       }
-      return [e.num||"","Trade",e.shotHtf,e.shotLtf,date,day,time,e.sens,e.biais,e.contexte,e.smt,e.confirmation,e.r===null?"":e.r,e.psycho,e.plan];
+      return [tradeNum(e),"Trade",e.shotHtf,e.shotLtf,date,day,time,e.sens,e.biais,e.contexte,e.smt,e.confirmation,e.r===null?"":e.r,e.psycho,e.plan];
     });
   }
   function buildJournalXlsx(rows){
@@ -1966,8 +1977,6 @@
   function journalConfigGroup(){
     const frag=document.createDocumentFragment();
     const settings=node("section","cfg-group");settings.append(cfgHeading("Journal"));
-    const next=node("input","setting-select");next.type="number";next.min="1";next.step="1";next.value=String(app.settings.nextTradeNum);next.inputMode="numeric";
-    settings.append(journalSetting("Numéro du prochain trade","Pour continuer la numérotation de ton Excel (colonne ID).","next",next));
     settings.append(journalSetting("Format de la copie Google Sheets","Virgule décimale (Français) ou point (Standard) pour les R collés.","csv",settingSelect([["fr","Français"],["std","Standard"]],app.settings.csvFormat)));
     frag.append(settings);
     const fields=node("section","cfg-group");fields.append(cfgHeading("Champs personnalisés du journal","Ils s’ajoutent au formulaire et à la sauvegarde, pas à l’export Excel."));
@@ -2000,8 +2009,7 @@
   }
   function applyJournalSetting(control){
     const key=control.dataset.jsetting,raw=String(control.value).trim().replace(",",".");
-    if(key==="next"){const n=Number(raw);if(!Number.isSafeInteger(n)||n<1){showToast("Numéro invalide.");return;}app.settings.nextTradeNum=n;}
-    else if(key==="csv"){if(!["fr","std"].includes(raw))return;app.settings.csvFormat=raw;}
+    if(key==="csv"){if(!["fr","std"].includes(raw))return;app.settings.csvFormat=raw;}
     else if(key==="pause"){const n=Number(raw);if(![0,5,10,15,30].includes(n))return;app.settings.lossPauseMinutes=n;}
     else if(key==="target"){const n=raw?Number(raw):0;if(!Number.isFinite(n)||n<0){showToast("Objectif invalide.");return;}app.settings.dailyTargetR=Math.min(50,n);}
     else return;
