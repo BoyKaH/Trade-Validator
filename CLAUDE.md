@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.14.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v35`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.15.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v36`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -64,6 +64,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Bloc « CONTEXTE HTF » teinté en bleu (v1.13.0, demande de Pierre). Chips en groupes (`chipGroups`) : POI « Zones » (FVG H1, Breaker H1) + « Niveaux » ; DOL « Niveaux ». Niveaux en paires H / L (`LEVEL_PAIRS` : PW, PD, Asian, London, AM, Data, Cycle 90 précédent) + chip « 09:30 ». Old PD Array, Key Level et Opening Price retirés à la demande de Pierre (repères de la fiche qu'il n'utilise pas).
 - Frise TOI (v1.13.0, `renderToiTimeline` / `refreshToiTimeline`) au-dessus du contexte : 4 h autour de l'heure NY, fenêtres `TOI_CHECK`, trait = maintenant, « Prochaine TOI dans N min ». **Visuel seulement.** Elle remplace la case OUI / PAS ENCORE ; la correction manuelle reste en petit lien. Dans le validateur, la ligne TOI du haut (`#toi-indicator`) est masquée ; dans le Journal elle reste, en heure NY (`nyRange`).
 - Ergonomie (v1.14.0, audit) : bouton retour (Android / navigateur) ferme la feuille ou la confirmation ouverte au lieu de quitter l'appli (`layerOpened` / `layerClosed` / `popstate`, une seule entrée d'historique). Dans le Journal, le bandeau du bas cache le verdict (`journal-mode`) et garde « Trade évité » + ⚙, sans pulsation. Carte Discipline : badges et règles repliés dans « Badges et règles » (`discMoreOpen`, en mémoire). Toujours vérifier mobile **et** ordi (Pierre utilise les deux).
+- Ergonomie (v1.15.0, audit suite) : textes un cran plus grands (min 11,5 px, surtout 12,5–13,5 px), gras allégé, plus de majuscules sauf badges et verdicts (WAIT / NO GO / CONFORME), titres en casse normale. Cibles tactiles ≥ 40 px (chips, H / L, lien de correction TOI). En-tête plus compact. Formulaire de trade : date, heure, sens, R, plan respecté en haut ; le reste dans « Détails » replié (`journalDraft.moreOpen`). Suppression d'une entrée du journal **sans confirmation**, avec toast « Annuler » 6 s (`showToast(message,{label,run})`) : l'annulation retire la pierre tombale et met `updatedAt` à maintenant pour que la synchro garde l'entrée. Réglages : procédure de jeton GitHub repliée.
 - Contexte : ordre POI → DOL → case TOI automatique → invalidation (choix de Pierre ; la fiche liste DOL avant POI, l'exemple 2 cherche le POI H1 d'abord).
 - Bouton « Exporter » → feuille avec deux choix :
   - **Fichier Excel `.xlsx`** (`exportJournalXlsx`, écrit à la main : ZIP sans compression + SpreadsheetML, sans dépendance ; plus de CSV depuis 1.10.0). Colonnes : ID, **Type** (Trade | Trade évité), puis les 13 autres colonnes de l'Excel de Pierre (`XLSX_COLUMNS`). Une ligne par trade pris et par trade évité, ordre chronologique ; la raison du trade évité va dans « Comportement / Psycho ». Dates, heures et R en vraies valeurs Excel. Vérifié dans Excel.
