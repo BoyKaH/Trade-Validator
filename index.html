@@ -327,7 +327,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.12.2";
+  const APP_VERSION = "1.12.3";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -1717,11 +1717,11 @@
     // Orientés retenue : rien ne récompense le fait de prendre des trades.
     {id:"fomo1",icon:"🛡",label:"Premier trade évité",stat:"avoidedTotal",goal:1},
     {id:"skip1",icon:"🧘",label:"Première session sans trade",stat:"skipTotal",goal:1},
-    {id:"day3",icon:"🔥",label:"3 jours sans trade merdique",stat:"bestStreak",goal:3},
+    {id:"day3",icon:"🔥",label:"3 jours clean d’affilée",stat:"bestStreak",goal:3},
     {id:"fomo10",icon:"🛡",label:"10 trades évités",stat:"avoidedTotal",goal:10},
-    {id:"day7",icon:"🔥",label:"7 jours sans trade merdique",stat:"bestStreak",goal:7},
+    {id:"day7",icon:"🔥",label:"7 jours clean d’affilée",stat:"bestStreak",goal:7},
     {id:"fomo50",icon:"🏰",label:"50 trades évités",stat:"avoidedTotal",goal:50},
-    {id:"day20",icon:"🏆",label:"20 jours sans trade merdique",stat:"bestStreak",goal:20},
+    {id:"day20",icon:"🏆",label:"20 jours clean d’affilée",stat:"bestStreak",goal:20},
     {id:"fomo100",icon:"👑",label:"100 trades évités",stat:"avoidedTotal",goal:100}
   ];
   function disciplineStats(){
@@ -1764,7 +1764,7 @@
     head.append(node("div","disc-title","Discipline"),node("div","disc-points",s.points+" pts"));
     card.append(head,node("div","disc-next","+"+s.todayPoints+" pt"+(s.todayPoints>1?"s":"")+" aujourd’hui"));
     const stats=node("div","disc-stats");
-    [["🔥 "+s.streak,"jour"+(s.streak>1?"s":"")+" sans trade merdique","record "+s.bestStreak],
+    [["🔥 "+s.streak,"jour"+(s.streak>1?"s":"")+" clean d’affilée","record "+s.bestStreak],
      ["🛡 "+s.avoidedTotal,"trade"+(s.avoidedTotal>1?"s":"")+" évité"+(s.avoidedTotal>1?"s":""),"au total"],
      ["🧘 "+s.skipTotal,"session"+(s.skipTotal>1?"s":"")+" sans trade","pas de setup"]].forEach(([value,label,sub])=>{
       const t=node("div","disc-stat");t.append(node("div","disc-stat-value",value),node("div","disc-stat-label",label),node("div","disc-stat-sub",sub));stats.append(t);
@@ -1775,7 +1775,7 @@
     const badges=node("div","disc-badges");
     earned.forEach(b=>badges.append(node("span","disc-badge got",b.icon+" "+b.label)));
     if(next)badges.append(node("span","disc-badge","🔒 "+next.label+" · "+s[next.stat]+"/"+next.goal));
-    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme avec plan respecté +1 · pas de setup +1 (1 par jour). Un trade hors process ou sans validation remet la série à zéro. Le résultat en R ne rapporte rien."));
+    card.append(badges,node("div","disc-rules","Trade évité +1 (5 par jour max) · trade conforme avec plan respecté +1 · pas de setup +1 (1 par jour). Jour clean = au moins une entrée et aucun trade hors process ou sans validation ; sinon la série retombe à zéro. Le résultat en R ne rapporte rien."));
     wrap.append(card);
   }
   let avoidedId=null;
@@ -1792,7 +1792,7 @@
     const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment(),counts=avoidedCounts();
     document.getElementById("sheet-title").textContent="Trade évité";
     const s=disciplineStats(),done=node("div","notice green");
-    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · "+s.points+" pts · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" sans trade merdique."));frag.append(done);
+    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · "+s.points+" pts · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" clean d’affilée."));frag.append(done);
     frag.append(node("div","field-label","Ce qui t’a tenté · facultatif"));
     const row=node("div","chip-row");
     AVOID_REASONS.forEach(reason=>{const b=setAction(makeButton("chip",reason.label),"avoided-reason",reason.id);b.setAttribute("aria-pressed",String(entry.reason===reason.id));row.append(b);});
