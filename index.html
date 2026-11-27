@@ -327,7 +327,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.12.3";
+  const APP_VERSION = "1.12.4";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -1309,7 +1309,7 @@
       if(a)strip.append(node("span","good","✓ "+a+" trade"+(a>1?"s":"")+" évité"+(a>1?"s":"")));
       if(guard.count)strip.append(node("span","",guard.count+" trade"+(guard.count>1?"s":"")+" · "+fmtR(guard.sum)));
       if(guard.sl)strip.append(node("span","bad",guard.sl+" SL / "+DAILY_SL_LIMIT));
-      strip.append(node("span","good","+"+disc.todayPoints+" pt"+(disc.todayPoints>1?"s":"")+" · 🔥 "+disc.streak));
+      strip.append(node("span","good","+"+disc.todayPoints+" pt"+(disc.todayPoints>1?"s":"")+(disc.streak>=STREAK_FLAME_MIN?" · 🔥 "+disc.streak:"")));
       box.append(strip);
       if(limit)box.append(node("div","day-strip-note","Ferme la plateforme. Limite de "+DAILY_SL_LIMIT+" SL par jour (heure NY) : ta règle, pas une règle de la formation."));
       container.append(box);
@@ -1724,6 +1724,9 @@
     {id:"day20",icon:"🏆",label:"20 jours clean d’affilée",stat:"bestStreak",goal:20},
     {id:"fomo100",icon:"👑",label:"100 trades évités",stat:"avoidedTotal",goal:100}
   ];
+  // La flamme n’apparaît qu’à partir de 3 jours clean d’affilée (choix de Pierre) ; avant, rien.
+  const STREAK_FLAME_MIN = 3;
+  function flame(streak){return streak>=STREAK_FLAME_MIN?"🔥 ":"";}
   function disciplineStats(){
     const days=new Map(),get=d=>{if(!days.has(d))days.set(d,{bad:0,avoided:0,skip:0,conform:0});return days.get(d);};
     let avoidedTotal=0,skipTotal=0;
@@ -1764,7 +1767,7 @@
     head.append(node("div","disc-title","Discipline"),node("div","disc-points",s.points+" pts"));
     card.append(head,node("div","disc-next","+"+s.todayPoints+" pt"+(s.todayPoints>1?"s":"")+" aujourd’hui"));
     const stats=node("div","disc-stats");
-    [["🔥 "+s.streak,"jour"+(s.streak>1?"s":"")+" clean d’affilée","record "+s.bestStreak],
+    [[flame(s.streak)+s.streak,"jour"+(s.streak>1?"s":"")+" clean d’affilée","record "+s.bestStreak],
      ["🛡 "+s.avoidedTotal,"trade"+(s.avoidedTotal>1?"s":"")+" évité"+(s.avoidedTotal>1?"s":""),"au total"],
      ["🧘 "+s.skipTotal,"session"+(s.skipTotal>1?"s":"")+" sans trade","pas de setup"]].forEach(([value,label,sub])=>{
       const t=node("div","disc-stat");t.append(node("div","disc-stat-value",value),node("div","disc-stat-label",label),node("div","disc-stat-sub",sub));stats.append(t);
@@ -1792,7 +1795,7 @@
     const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment(),counts=avoidedCounts();
     document.getElementById("sheet-title").textContent="Trade évité";
     const s=disciplineStats(),done=node("div","notice green");
-    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · "+s.points+" pts · 🔥 "+s.streak+" jour"+(s.streak>1?"s":"")+" clean d’affilée."));frag.append(done);
+    done.append(node("strong","","✓ Tu t’es retenu"+(counts.today<=5?" · +1 pt":"")),document.createTextNode(counts.today+" aujourd’hui · "+counts.week+" cette semaine · "+counts.total+" au total · "+s.points+" pts · "+flame(s.streak)+s.streak+" jour"+(s.streak>1?"s":"")+" clean d’affilée."));frag.append(done);
     frag.append(node("div","field-label","Ce qui t’a tenté · facultatif"));
     const row=node("div","chip-row");
     AVOID_REASONS.forEach(reason=>{const b=setAction(makeButton("chip",reason.label),"avoided-reason",reason.id);b.setAttribute("aria-pressed",String(entry.reason===reason.id));row.append(b);});
