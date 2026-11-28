@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.18.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v39`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.19.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v40`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -65,7 +65,7 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Bouton du bas **« Trade évité »** (ex-« FOMO évité », `kind:"avoided"` inchangé) : FOMO ou trade impulsif retenu. Raisons : FOMO (id `market`, ancien « Marché »), Impulsif, Discord, Résultat. Il affiche le compteur du jour (« 🛡 N ») et **pulse seulement au moment de la tentation** : NO GO, ou WAIT une fois le SETUP validé (`renderSticky`). Une pulsation permanente pendant le remplissage ne se voyait plus.
 - Liste du journal : la raison d'un trade évité n'apparaît qu'à droite. Plus de pastille numérotée sur les cartes d'étape (les onglets du haut numérotent déjà).
 - Bandeau du jour unique (`renderDayNotices`) : trades évités, trades pris, R, SL ; il passe en rouge à la limite. **Limite de 2 SL par jour (`DAILY_SL_LIMIT`)** : règle de Pierre, pas de la formation → **NO GO jusqu'au lendemain** (jour = heure de New York, choix de Pierre).
-- Les trades « Sans validation » ont un cadre d'alerte dans la liste. Les cases Conformes / Hors process / Sans validation montrent des nombres de trades ; les R sont dans le Dashboard.
+- Les trades « Sans validation » ont un cadre d'alerte dans la liste. Les cases Conformes / Hors process / Sans validation montrent le nombre de trades, « N % des trades » (part du total, pas un winrate) et, depuis 1.19.0 (demande de Pierre : voir l'impact du process sur la performance), le winrate et le total en R de la catégorie, calculés comme le Dashboard (trades avec R et date, 0 R exclus du winrate).
 - Tous les réglages sont sous ⚙ : Garde-fous (pause, objectif), Journal (format de copie), champs personnalisés. « Nouvelle session » est sous « Pas de setup », plus dans la barre du bas. La TOI détaillée n'est que dans la ligne du haut ; la frise TOI porte la correction manuelle (petit lien).
 - Onglet Journal → sous-onglets « Trades » / « Dashboard ». Le Dashboard reprend celui de l'Excel (`tradeStats()`, trades avec R et date seulement) : nombre de trades, winrate hors 0 R, expectancy, profit factor, Sharpe par trade (écart-type d'échantillon, non annualisé), RR moyen (gain moyen / perte moyenne), drawdown max depuis 0, pertes consécutives max (un BE remet à zéro) ; courbes R cumulés et drawdown ; filtre début/fin (KPI et courbes seulement) ; calendrier mensuel et bilan des 12 derniers mois sur tous les trades. Vérifié contre l'Excel : mêmes valeurs. Filtres en mémoire (`dashState`), non sauvegardés.
 - Bloc « CONTEXTE HTF » teinté en bleu (v1.13.0, demande de Pierre). Chips en groupes (`chipGroups`) : POI « Zones » (FVG H1, Breaker H1) + « Niveaux » ; DOL « Niveaux ». Niveaux en paires H / L (`LEVEL_PAIRS` : PW, PD, Asian, London, AM, Data, Cycle 90 précédent) + chip « 09:30 ». Old PD Array, Key Level et Opening Price retirés à la demande de Pierre (repères de la fiche qu'il n'utilise pas).
