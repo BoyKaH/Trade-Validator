@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.15.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v36`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.16.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v37`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -37,6 +37,12 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 - Après une fusion qui change le journal, l'écran est re-rendu (aussi le validateur), sauf si une feuille est ouverte ou un champ en cours de saisie.
 - Testé avec un faux GitHub en mémoire, pas encore avec un vrai jeton.
 - Toute nouvelle donnée doit passer par `normalizeApp()` et les fonctions `normalize*()`. La sauvegarde JSON (`validateBackupRoot`) accepte les versions 5 à 8.
+
+## Calendrier NQ
+
+- Écrit en dur (`NQ_CALENDAR`, sources CME / NinjaTrader) : horaires normaux + jours fériés du 01/01/2026 au 02/01/2028. **Aucune mise à jour automatique** : prolonger à la main chaque année.
+- Prévisionnel : toute l'année 2027 (`provisionalFrom`) et les dates marquées `provisional:true` (24/12 et 31/12/2026). Revérifié le 28/11/2026 : CME n'avait pas encore publié 2027. Retirer `provisional` / avancer `provisionalFrom` quand CME confirme.
+- v1.16.0 : la frise TOI suit le calendrier (heures fermées hachurées, TOI seulement quand le NQ est ouvert) ; avertissement « NQ fermé » dans `verdict.warnings` (jamais bloquant) ; rappel dans ⚙ à 60 jours de la fin (`CALENDAR_REMINDER_DAYS`, `calendarDaysLeft()`) et « calendrier à prolonger » dans l'en-tête à 30 jours.
 
 ## Logique du validateur
 

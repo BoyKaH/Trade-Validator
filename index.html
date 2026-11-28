@@ -153,6 +153,7 @@
     .tl-track{position:relative;height:28px;margin:9px 0 4px;background:#1c1c1c;border-radius:7px}
     .tl-win{position:absolute;top:0;bottom:0;background:#14304d;border:1px solid #24527f;border-radius:5px}
     .tl-win.open{background:#3a2a0a;border-color:#8a6420}.tl-win.inside{background:#1d4a75;border-color:#64b4ff}
+    .tl-closed{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,#262626 0 4px,#1c1c1c 4px 8px);border-radius:4px}
     .tl-now{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:#ef6464;border-radius:1px}
     .tl-ticks{position:relative;height:15px;font-size:12px;color:#8a8a8a}.tl-ticks span{position:absolute;transform:translateX(-50%)}
     .tl-legend{font-size:12px;color:#8a8a8a;margin-top:2px;line-height:1.4}
@@ -355,7 +356,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.15.0";
+  const APP_VERSION = "1.16.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -451,8 +452,9 @@
   // Heures de New York (ET). Ne pas utiliser le calendrier des actions Nasdaq pour les futures NQ.
   // Sources : https://www.cmegroup.com/trading-hours.html
   // https://support.ninjatrader.com/s/article/2026-Holiday-Trading-Hours?language=en_US
-  // Calendrier CME consulté le 03/11/2026. Les horaires 2027 restent prévisionnels
-  // jusqu'à leur finalisation par CME, généralement environ deux semaines avant le jour férié.
+  // Calendrier CME consulté le 03/11/2026, revérifié le 28/11/2026 : CME n'a pas encore publié 2027
+  // ni les horaires définitifs du 24/12 et du 31/12/2026 (finalisés environ deux semaines avant).
+  // Ils restent prévisionnels : toute l'année 2027 (provisionalFrom) et les dates marquées provisional:true.
   const NQ_CALENDAR = {
     from:"2026-01-01",through:"2028-01-02",provisionalFrom:"2027-01-04",
     exceptions:{
@@ -466,9 +468,9 @@
       "2026-09-07":{name:"Labor Day",hours:[[0,780],[1080,1440]]},
       "2026-11-26":{name:"Thanksgiving",hours:[[0,780],[1080,1440]]},
       "2026-11-27":{name:"Lendemain de Thanksgiving",hours:[[0,795]]},
-      "2026-12-24":{name:"Veille de Noël",hours:[[0,795]]},
+      "2026-12-24":{name:"Veille de Noël",hours:[[0,795]],provisional:true},
       "2026-12-25":{name:"Noël",hours:[]},
-      "2026-12-31":{name:"Veille du Nouvel An",hours:[[0,975],[990,1020]]},
+      "2026-12-31":{name:"Veille du Nouvel An",hours:[[0,975],[990,1020]],provisional:true},
       "2027-01-01":{name:"Nouvel An",hours:[]},
       "2027-01-18":{name:"Martin Luther King Day",hours:[[0,780],[1080,1440]]},
       "2027-02-15":{name:"Presidents Day",hours:[[0,780],[1080,1440]]},
@@ -513,12 +515,18 @@
     }
     return instant;
   }
+  // Jours restants avant la fin du calendrier NQ (heure NY). Rappel à 60 jours (v1.16.0).
+  const CALENDAR_REMINDER_DAYS = 60;
+  function calendarDaysLeft(){
+    const p=newYorkParts(new Date());
+    return Math.round((Date.parse(NQ_CALENDAR.through+"T00:00:00Z")-Date.UTC(p.year,p.month-1,p.day))/86400000);
+  }
   function marketDay(date){
     const key=date.toISOString().slice(0,10),day=date.getUTCDay();
     const covered=key>=NQ_CALENDAR.from&&key<=NQ_CALENDAR.through;
     const exception=covered?NQ_CALENDAR.exceptions[key]:null;
     const regular=day===6?[]:day===0?[[1080,1440]]:day===5?[[0,975],[990,1020]]:[[0,975],[990,1020],[1080,1440]];
-    return {covered:covered,provisional:covered&&key>=NQ_CALENDAR.provisionalFrom,holiday:exception?exception.name:null,hours:exception?exception.hours:regular};
+    return {covered:covered,provisional:covered&&(key>=NQ_CALENDAR.provisionalFrom||!!(exception&&exception.provisional)),holiday:exception?exception.name:null,hours:exception?exception.hours:regular};
   }
   function getTiming(now=new Date()){
     const p=newYorkParts(now),today=new Date(Date.UTC(p.year,p.month-1,p.day));
@@ -564,7 +572,8 @@
   function updateTiming(){
     const now=new Date(),timing=getTiming(now),toi=getTimeOfInterest(now,timing);
     document.getElementById("paris-clock").textContent="Paris · "+PARIS_TIME_FORMATTER.format(now);
-    document.getElementById("timing-market").textContent=timing.market.open===null?"NQ · calendrier à actualiser":"NQ · "+(timing.market.open?"ouvert":"fermé")+(timing.market.provisional?" · prévisionnel":"")+(timing.market.holiday?" · "+timing.market.holiday:"");
+    const daysLeft=calendarDaysLeft();
+    document.getElementById("timing-market").textContent=timing.market.open===null?"NQ · calendrier à actualiser":"NQ · "+(timing.market.open?"ouvert":"fermé")+(daysLeft<=30?" · calendrier à prolonger":"")+(timing.market.provisional?" · prévisionnel":"")+(timing.market.holiday?" · "+timing.market.holiday:"");
     const indicator=document.getElementById("toi-indicator");let state="outside",preferred=false,text;
     if(toi.current){
       state="inside";preferred=toi.current.preferred;text="TOI en cours — "+(preferred?"★ ":"")+toi.current.name+" · "+nyRange(toi.current.startAt,toi.current.endAt)+" · fin dans "+durationLabel((toi.current.endAt-now.getTime())/60000);
@@ -1086,6 +1095,10 @@
     verdict.warnings=WARNING_FLAGS.filter(flag=>setup.flags[flag.id]).map(flag=>flag.text);
     // TOI : avertissement seulement, jamais bloquant (une entrée à XX:40 reste possible).
     if(!toiSatisfied(setup,currentToi()))verdict.warnings.unshift("Hors TOI (XX:45 → XX:15 ou Open 09:30)");
+    // NQ fermé (week-end, pause 17:00–18:00, jour férié) : avertissement seulement, jamais bloquant (v1.16.0).
+    const market=getTiming().market;
+    if(market.open===false)verdict.warnings.unshift("NQ fermé"+(market.holiday?" ("+market.holiday+")":""));
+    else if(market.open===null)verdict.warnings.unshift("Calendrier NQ à prolonger : ouverture inconnue");
     return verdict;
   }
   function stageStatus(stage,setup){
@@ -1368,23 +1381,31 @@
     box.dataset.key=toiTimelineKey(setup);box.textContent="";
     const info=currentToi(),ok=toiSatisfied(setup,info),override=effectiveToiOverride(setup);
     const head=node("div","tl-head");let status;
-    if(info.current)status=node("span","tl-status in","TOI en cours · fin dans "+durationLabel((info.current.endAt-now.getTime())/60000));
+    const mkt=getTiming(now).market;
+    if(mkt.open===false)status=node("span","tl-status","NQ fermé"+(mkt.holiday?" · "+mkt.holiday:"")+(info.next?" · TOI dans "+durationLabel((info.next.startAt-now.getTime())/60000):""));
+    else if(info.current)status=node("span","tl-status in","TOI en cours · fin dans "+durationLabel((info.current.endAt-now.getTime())/60000));
     else if(info.next)status=node("span","tl-status","Prochaine TOI dans "+durationLabel((info.next.startAt-now.getTime())/60000));
     else status=node("span","tl-status","Aucune TOI prévue");
     head.append(node("span","","TOI · NY"),status);box.append(head);
-    const track=node("div","tl-track");
-    [-1,0,1].forEach(d=>TOI_CHECK.windows.forEach(session=>{
-      if(!session.days.includes(dow(d)))return;
-      session.windows.forEach(([a,b])=>{
-        const A=a+d*1440,B=b+d*1440;if(B<=start||A>=end)return;
-        const win=node("div","tl-win"+(session.id==="open-rth"?" open":"")+(nowMin>=A&&nowMin<B?" inside":""));
-        win.style.left=pct(Math.max(A,start));win.style.width=((Math.min(B,end)-Math.max(A,start))/span*100).toFixed(2)+"%";win.title=hm(wrapMin(A))+" → "+hm(wrapMin(B))+" NY";track.append(win);
+    // Suit le calendrier NQ (v1.16.0) : heures fermées grisées, TOI seulement quand le NQ est ouvert (comme getTimeOfInterest).
+    const track=node("div","tl-track");let anyClosed=false;
+    const seg=(cls,A,B,title)=>{const a=Math.max(A,start),b=Math.min(B,end);if(b<=a)return null;const el=node("div",cls);el.style.left=pct(a);el.style.width=((b-a)/span*100).toFixed(2)+"%";if(title)el.title=title;track.append(el);return el;};
+    [-1,0,1].forEach(d=>{
+      const sched=marketDay(new Date(Date.UTC(p.year,p.month-1,p.day+d))),open=sched.covered?sched.hours:[],off=d*1440;
+      let cursor=0;
+      open.slice().sort((x,y)=>x[0]-y[0]).concat([[1440,1440]]).forEach(([o,c])=>{if(o>cursor&&seg("tl-closed",cursor+off,o+off,sched.covered?"NQ fermé"+(sched.holiday?" · "+sched.holiday:""):"Calendrier NQ à prolonger"))anyClosed=true;cursor=Math.max(cursor,c);});
+      TOI_CHECK.windows.forEach(session=>{
+        if(!session.days.includes(dow(d)))return;
+        session.windows.forEach(([a,b])=>open.forEach(([o,c])=>{
+          const A=Math.max(a,o)+off,B=Math.min(b,c)+off;if(B<=A)return;
+          seg("tl-win"+(session.id==="open-rth"?" open":"")+(nowMin>=A&&nowMin<B?" inside":""),A,B,hm(wrapMin(A))+" → "+hm(wrapMin(B))+" NY");
+        }));
       });
-    }));
+    });
     const marker=node("div","tl-now");marker.style.left=pct(nowMin);track.append(marker);box.append(track);
     const ticks=node("div","tl-ticks");
     for(let m=Math.ceil(start/60)*60;m<=end;m+=60){const pos=(m-start)/span*100;if(pos<5||pos>95)continue;const t=node("span","",hm(wrapMin(m)));t.style.left=pos.toFixed(2)+"%";ticks.append(t);}
-    box.append(ticks,node("div","tl-legend","Bleu : XX:45 → XX:15 · jaune : open 09:30 → 09:45 · trait rouge : maintenant"));
+    box.append(ticks,node("div","tl-legend","Bleu : XX:45 → XX:15 · jaune : open 09:30 → 09:45 · trait rouge : maintenant"+(anyClosed?" · hachuré : NQ fermé":"")));
     let fixText,fixValue;
     if(override){fixText="Correction manuelle active ("+(override==="yes"?"dans ma TOI":"hors TOI")+") · annuler";fixValue=override;}
     else if(ok){fixText="Corriger : je ne suis pas dans ma TOI";fixValue="no";}
@@ -1496,7 +1517,7 @@
     if((verdict.type==="nogo"||verdict.type==="wait")&&verdict.cause)title+=" — "+verdict.cause.message;
     document.getElementById("sticky-title").textContent=title;
     let sub;
-    if(warnings.length)sub="⚠ "+(warnings[0].startsWith("Hors TOI")?"":"Abstention conseillée : ")+warnings[0]+(warnings.length>1?" (+"+(warnings.length-1)+")":"");
+    if(warnings.length)sub="⚠ "+(/^(Hors TOI|NQ fermé|Calendrier NQ)/.test(warnings[0])?"":"Abstention conseillée : ")+warnings[0]+(warnings.length>1?" (+"+(warnings.length-1)+")":"");
     else if(verdict.type==="conforme")sub="Processus conforme, résultat non prédit.";
     else if(verdict.type==="wait"||verdict.type==="nogo"){
       const others=new Set(verdict.missing||[]).size-1;
@@ -2411,6 +2432,12 @@
     const body=document.getElementById("sheet-body"),frag=document.createDocumentFragment();
     const simpleSettings=node("section","cfg-group");simpleSettings.append(cfgHeading("Application"));
     simpleSettings.append(makeSettingSwitch("Vibrations","Retour haptique si l’appareil le permet.","haptics",app.settings.haptics));
+    const daysLeft=calendarDaysLeft();
+    if(daysLeft<=CALENDAR_REMINDER_DAYS){
+      const [y,m,d]=NQ_CALENDAR.through.split("-"),n=node("div","notice orange");
+      n.append(node("strong","",daysLeft>0?"Calendrier NQ à prolonger":"Calendrier NQ expiré"),document.createTextNode("Horaires et jours fériés connus jusqu’au "+d+"/"+m+"/"+y+(daysLeft>0?" (dans "+daysLeft+" jour"+(daysLeft>1?"s":"")+")":"")+". Après, plus de TOI ni d’état du marché : demande à Claude d’ajouter l’année suivante."));
+      simpleSettings.append(n);
+    }
     const versionCard=node("div","utility-card");versionCard.append(node("div","utility-title","Version "+APP_VERSION),node("div","utility-copy","Données sauvegardées automatiquement sur cet appareil · "+(navigator.onLine!==false?"en ligne":"hors ligne")));simpleSettings.append(versionCard);frag.append(simpleSettings);
 
     const notificationGroup=node("section","cfg-group"),notificationStatus=androidNotificationStatus();
