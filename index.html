@@ -171,6 +171,7 @@
     .warn-btn .bonus-mark{border-color:#555;color:#bbb}.warn-btn[aria-pressed="true"] .bonus-mark{border-color:#a0702a;background:#5a3d0c;color:#ffd58a}
     .notice{border:1px solid;border-radius:12px;padding:11px;margin:0 0 8px;font-size:13px;line-height:1.45}
     .notice strong{display:block;font-size:14px;margin-bottom:2px}
+    .sync-missing strong{display:block;margin-bottom:2px}.sync-missing-btn{margin-top:8px;min-height:40px;width:100%}
     .notice.orange{border-color:#8a6420;background:#271c08;color:#f0c36a}
     .notice.red{border-color:#9a3939;background:#2a0e0e;color:#ff9b9b}
     .notice.grey{border-color:#333;background:#141414;color:#aaa}
@@ -356,7 +357,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.16.0";
+  const APP_VERSION = "1.17.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -1018,7 +1019,7 @@
     confirmAction("Déconnecter cet appareil ?","Le jeton est effacé de cet appareil. Le journal reste ici et sur GitHub, mais ne se synchronise plus.",()=>{saveSyncConfig(null);renderConfig();if(currentView==="journal")render();showToast("Synchro désactivée sur cet appareil.");},"Déconnecter");
   }
   function renderSyncGroup(){
-    const group=node("section","cfg-group"),cfg=loadSyncConfig();
+    const group=node("section","cfg-group"),cfg=loadSyncConfig();group.id="sync-group";
     group.append(cfgHeading("Synchronisation (GitHub)","Retrouve ton journal sur le téléphone et l’ordi. Les données vont dans un fichier d’un dépôt GitHub privé, à ton nom."));
     const card=node("div","utility-card");
     if(cfg){
@@ -1684,6 +1685,12 @@
     wrap.append(tabs);
     const syncText=syncLabel();
     if(syncText){const line=setAction(makeButton("sync-line",(syncText==="Synchro en erreur"?"⚠ ":"⟳ ")+syncText,"Ouvrir les réglages de synchronisation"),"open-config");wrap.append(line);}
+    else{
+      // Appareil sans synchro (v1.17.0) : les entrées restent ici seulement. Cas vécu : 2 trades saisis sur l’ordi du boulot jamais synchronisés.
+      const n=node("div","notice orange sync-missing");
+      n.append(node("strong","","Cet appareil n’est pas synchronisé"),document.createTextNode("Tes trades restent ici seulement : ils n’apparaîtront pas sur tes autres appareils."),setAction(makeButton("secondary-btn sync-missing-btn","Connecter la synchro"),"open-sync"));
+      wrap.append(n);
+    }
     if(journalTab==="dash"){renderDashboard(wrap);frag.append(wrap);return;}
     renderDisciplineCard(wrap);
     const stats=journalStats(),tiles=node("div","stat-tiles");
@@ -2544,6 +2551,7 @@
     else if(action==="journal-copy")void copyNewTrades();
     else if(action==="journal-export")openSheet("export");
     else if(action==="open-config")openSheet("config");
+    else if(action==="open-sync"){openSheet("config");setTimeout(()=>{const g=document.getElementById("sync-group"),body=document.getElementById("sheet-body");if(g&&body)body.scrollTop+=g.getBoundingClientRect().top-body.getBoundingClientRect().top-8;},350);}
     else if(action==="journal-tab"){journalTab=id==="dash"?"dash":"list";render();haptic(6);}
     else if(action==="dash-reset"){dashState.from="";dashState.to="";render();}
     else if(action==="dash-month"){dashState.month=shiftMonth(dashState.month||monthKey(ymd(newYorkParts(new Date()))),Number(id)||0);render();haptic(6);}
