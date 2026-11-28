@@ -188,6 +188,8 @@
     .disc-stat{border:1px solid #24352e;border-radius:10px;background:#101614;padding:8px 4px;text-align:center;min-width:0}
     .disc-stat-value{font-size:19px;font-weight:800;color:var(--text);white-space:nowrap}
     .disc-stat-label{font-size:12px;font-weight:800;color:#b8c9c2;margin-top:2px}.disc-stat-sub{font-size:12px;color:#7d968c}
+    .disc-effect{margin-top:9px;padding:8px 10px;border-radius:9px;font-size:13px;line-height:1.4;background:#151515;color:#c5c5c5;border:1px solid #2c2c2c}
+    .disc-effect.good{border-color:#1e654c;color:#9fe3c8}.disc-effect.bad{border-color:#7b3030;color:#f0a0a0}.disc-effect-label{font-weight:750}
     .disc-warn{margin-top:8px;font-size:13px;color:#f0a0a0}
     .disc-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
     .disc-badge{font-size:12.5px;font-weight:750;border:1px solid #333;border-radius:99px;padding:4px 9px;color:#999;background:#151515}
@@ -357,7 +359,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.17.0";
+  const APP_VERSION = "1.18.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -1887,18 +1889,33 @@
     if(!fresh.length)return "";haptic([20,40,20,40,20]);return fresh[0].icon+" Badge débloqué : "+fresh[0].label;
   }
   let discMoreOpen=false;
+  // Dernière entrée saisie ou modifiée, et son effet sur les points et la série (même barème que disciplineStats).
+  function lastDisciplineEffect(){
+    const entries=app.journal.filter(e=>e.date);if(!entries.length)return null;
+    const last=entries.slice().sort((a,b)=>entryStamp(a).localeCompare(entryStamp(b))).pop();
+    const when=fmtDate(last.date)+" : ",rankOf=kind=>entries.filter(e=>e.kind===kind&&e.date===last.date&&(e.createdAt||"")<=(last.createdAt||"")).length;
+    if(last.kind==="avoided"){const n=rankOf("avoided");return n<=5?{tone:"good",text:when+"trade évité → +1 pt"}:{tone:"neutral",text:when+"trade évité → 0 pt (5 par jour max)"};}
+    if(last.kind==="no_trade"){const n=rankOf("no_trade");return n<=1?{tone:"good",text:when+"pas de setup → +1 pt"}:{tone:"neutral",text:when+"pas de setup → 0 pt (1 par jour)"};}
+    const num=tradeNum(last),label="trade #"+num+" ";
+    const category=last.auto?last.auto.category:"none";
+    if(category==="ok")return last.plan==="Oui"?{tone:"good",text:when+label+"conforme, plan respecté → +1 pt"}:{tone:"neutral",text:when+label+"conforme, plan pas déclaré respecté → 0 pt, série intacte"};
+    return {tone:"bad",text:when+label+(category==="bad"?"hors process":"sans validation")+" → série remise à 0, 0 pt"};
+  }
   function renderDisciplineCard(wrap){
     const s=disciplineStats(),card=node("section","disc-card"),head=node("div","disc-head");
-    head.append(node("div","disc-title","Discipline"),node("div","disc-points",s.points+" pts"));
+    head.append(node("div","disc-title","Discipline"),node("div","disc-points",s.points+" pt"+(s.points>1?"s":"")));
     card.append(head,node("div","disc-next","+"+s.todayPoints+" pt"+(s.todayPoints>1?"s":"")+" aujourd’hui"));
     const stats=node("div","disc-stats");
-    [[flame(s.streak)+s.streak,"jour"+(s.streak>1?"s":"")+" clean d’affilée","record "+s.bestStreak],
-     ["🛡 "+s.avoidedTotal,"trade"+(s.avoidedTotal>1?"s":"")+" évité"+(s.avoidedTotal>1?"s":""),"au total"],
-     ["🧘 "+s.skipTotal,"session"+(s.skipTotal>1?"s":"")+" sans trade","pas de setup"]].forEach(([value,label,sub])=>{
+    // Sous chaque compteur : ce qui le fait bouger (v1.18.0, Pierre ne voyait pas l’effet de ses saisies).
+    [[flame(s.streak)+s.streak,"jour"+(s.streak>1?"s":"")+" clean d’affilée","remis à 0 par un trade hors plan · record "+s.bestStreak],
+     ["🛡 "+s.avoidedTotal,"trade"+(s.avoidedTotal>1?"s":"")+" évité"+(s.avoidedTotal>1?"s":""),"bouton Trade évité · +1 pt"],
+     ["🧘 "+s.skipTotal,"session"+(s.skipTotal>1?"s":"")+" sans trade","bouton Pas de setup · +1 pt"]].forEach(([value,label,sub])=>{
       const t=node("div","disc-stat");t.append(node("div","disc-stat-value",value),node("div","disc-stat-label",label),node("div","disc-stat-sub",sub));stats.append(t);
     });
     card.append(stats);
-    if(s.todayBroken)card.append(node("div","disc-warn","Série remise à zéro aujourd’hui : un trade hors process ou sans validation."));
+    const effect=lastDisciplineEffect();
+    if(effect){const e=node("div","disc-effect "+effect.tone);e.append(node("span","disc-effect-label","Dernier effet · "),document.createTextNode(effect.text));card.append(e);}
+    if(s.todayBroken&&!(effect&&effect.tone==="bad"))card.append(node("div","disc-warn","Série remise à zéro aujourd’hui : un trade hors process ou sans validation."));
     const earned=BADGES.filter(b=>s[b.stat]>=b.goal),next=BADGES.find(b=>s[b.stat]<b.goal);
     const badges=node("div","disc-badges");
     earned.forEach(b=>badges.append(node("span","disc-badge got",b.icon+" "+b.label)));
