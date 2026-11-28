@@ -10,8 +10,8 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Fichiers
 
-- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.19.0"`.
-- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v40`) à chaque modification de `index.html`.
+- `index.html` : toute l'appli (HTML + CSS + JS vanilla, sans dépendance). Version actuelle : `APP_VERSION = "1.20.0"`.
+- `sw.js` : service worker PWA. **Incrémenter `CACHE_NAME`** (actuellement `v41`) à chaque modification de `index.html`.
 - `pre_trade_validator.html` : redirection pour les anciennes installations.
 - `manifest.json`, icônes : PWA.
 - `android-app/` : APK WebView qui charge `https://boykah.github.io/Trade-Validator/`. Les changements n'arrivent sur le téléphone qu'après **commit + push sur `main`** (GitHub Pages). Le bridge `window.TradeValidatorAndroid` gère les notifications TOI.
@@ -47,7 +47,9 @@ Le validateur sert **avant** le trade, le journal **après**. Pierre entre souve
 
 ## Logique du validateur
 
-- 4 étapes, dans cet ordre depuis 1.8.0 : `context` (1 CONTEXTE), `setup` (2 SETUP), `state` (3 ÉTAT), `entry` (4, affichée « CSD »). ÉTAT est posé juste avant le CSD ; CONTEXTE n'est plus verrouillé ; « Pas de setup » est toujours disponible.
+- **Validateur express seul depuis 1.20.0** (Pierre : le mode en 4 étapes faisait « usine à gaz » avant un trade ; le mode complet a été **retiré**, pas seulement masqué). Un écran (`renderValidator`) : bandeaux, frise TOI, carte « Contexte HTF » (POI, DOL : jusqu'à 4 valeurs récentes en gros boutons tirées des `snap` de `verdictLog` via `recentContextValues()`, + « Autre / écrire » avec champ texte et chips), carte « Avant d'entrer » (`renderExpressChecks`) : Prix dans mon POI, Liquidité attendue prise, question d'état Oui / Non, CSD présent, SMT facultatif, puis une ligne d'état (« Il manque : … » / NO GO / Conforme). « Pas de setup » et « Nouvelle session » en dessous. Sur ordi : 2 colonnes.
+- Plus saisis depuis 1.20.0 : types de CSD (`csdObs`), signaux d'abstention (`flags`), invalidation, phrase. Les champs restent dans les données (anciennes sessions, `snap`) mais le journal ne pré-remplit plus qu'avec contexte (POI · DOL), SMT, « CSD » / « Aucune » et plan respecté : Pierre complète le reste à la main.
+- Les étapes internes (`stageStatus`) servent encore au verdict et à la pulsation du bouton Trade évité.
 - ÉTAT = une seule question : « Est-ce que cette action est cohérente avec le trader que je suis en train de devenir ? » (NON → incident `identity`, NO GO pour la session). **Garde-fou ajouté** (vidéo Astra Mindset sur discipline et identité), **pas une règle de la formation**. Remise à zéro à chaque session et après une perte.
 - `getVerdict()` : incidents, pause après perte et limite de 2 SL du jour NY (`block`, `dailySlReached()`), puis champs de contexte obligatoires (POI, DOL), critères `c_htf_zone` et `c_liquidity_taken`, puis question d'état, puis CSD `c_setup_liquidity`. Ensuite `nogo` > `wait` > `premium` (SMT) > `conforme`.
 - `verdict.warnings` (signaux d'abstention) : **avertissement seulement, ne bloque jamais**.

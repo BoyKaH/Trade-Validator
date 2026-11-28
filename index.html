@@ -199,6 +199,21 @@
     .disc-more-summary::-webkit-details-marker{display:none}.disc-more-summary::before{content:"▸";margin-right:7px;transition:transform .15s}.disc-more[open] .disc-more-summary::before{transform:rotate(90deg)}
     .disc-more .disc-badges{margin-top:2px}
     .toi-indicator[hidden]{display:none}
+    .express-view{display:grid;gap:8px}.express-view>*{margin:0}.x-card{padding:12px}.x-card .section-title{margin-bottom:8px}
+    .x-field{margin-bottom:10px}.x-recents{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+    .x-recent{min-height:44px;padding:0 14px;border:1px solid #3a3a3a;border-radius:10px;background:#141414;color:#d0d0d0;font-size:14px;font-weight:700;cursor:pointer}
+    .x-recent[aria-pressed="true"]{border-color:#4a9be0;background:#11283d;color:#cfe6ff}
+    .x-more{margin:2px 0 0}.x-more .text-input{margin:2px 0 4px}
+    .x-check,.x-smt{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;margin-bottom:7px;padding:0 12px;border:1px solid #333;border-radius:11px;background:#141414;color:#e0e0e0;font-size:15px;font-weight:700;text-align:left;cursor:pointer}
+    .x-check-mark{display:flex;align-items:center;justify-content:center;flex:0 0 26px;height:26px;border:2px solid #555;border-radius:7px;color:#0c1f18;font-weight:900}
+    .x-check[aria-pressed="true"]{border-color:#1e654c;background:#0c1f18}.x-check[aria-pressed="true"] .x-check-mark{background:#3ed29f;border-color:#3ed29f}
+    .x-smt{min-height:44px;font-size:13.5px;color:#aaa;border-style:dashed}.x-smt .x-check-mark{flex-basis:22px;height:22px;color:#64d8ff;border-color:#3b5566}
+    .x-smt[aria-pressed="true"]{border-color:#2a6c8f;color:#9fdcff;background:#071f35}
+    .x-state{margin-bottom:7px;padding:10px 12px;border:1px solid #333;border-radius:11px;background:#141414}.x-state.valid{border-color:#1e654c}.x-state.invalid{border-color:#7b3030;background:#250e0e}
+    .x-state-text{font-size:14px;font-weight:700;margin-bottom:8px;line-height:1.35}
+    .x-status{margin-top:4px;padding:9px 11px;border-radius:10px;font-size:13.5px;font-weight:700;line-height:1.4;border:1px solid #333;color:#c5c5c5}
+    .x-status.good{border-color:#1e654c;color:#9fe3c8;background:#0c1f18}.x-status.wait{border-color:#8a6420;color:#f0c36a;background:#271c08}.x-status.bad{border-color:#7b3030;color:#f0a0a0;background:#250e0e}
+    @media (min-width:720px){.express-view{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}.express-view>:not(.x-card){grid-column:1/-1}}
     .form-more,.sync-help{margin:4px 0 12px;border:1px solid #2c2c2c;border-radius:10px;padding:0 10px}
     .form-more>summary,.sync-help>summary{display:flex;align-items:center;min-height:44px;cursor:pointer;font-size:13.5px;font-weight:750;color:#c5c5c5;list-style:none}
     .form-more>summary::-webkit-details-marker,.sync-help>summary::-webkit-details-marker{display:none}
@@ -359,7 +374,7 @@
   "use strict";
 
   const STORAGE_KEY = "ptv_v8";
-  const APP_VERSION = "1.19.0";
+  const APP_VERSION = "1.20.0";
   const V7_KEY = "ptv_v7";
   const V6_KEY = "ptv_v6";
   const V5_KEY = "ptv_v5";
@@ -496,7 +511,6 @@
   let confirmCallback = null;
   let activeSheet = null;
   let deferredInstallPrompt = null;
-  let expandedStage = null;
   let currentVerdict = null;
   let updateAvailable = false;
 
@@ -1158,50 +1172,6 @@
     clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show","has-action"),action?6000:2200);
   }
   // Ordre des étapes : CONTEXTE → SETUP → ÉTAT → CSD.
-  function stageAccessible(stage,setup){
-    if(stage==="context")return true;
-    if(setup.noSetup)return false;
-    if(stage==="setup")return contextFieldsDone(setup);
-    if(stage==="state")return contextFieldsDone(setup)&&stageStatus("setup",setup)==="done";
-    return contextFieldsDone(setup)&&stageStatus("setup",setup)==="done"&&stageStatus("state",setup)==="done";
-  }
-  function currentStageFor(setup){
-    if(setup.noSetup)return "context";
-    if(!contextFieldsDone(setup))return "context";
-    if(stageStatus("setup",setup)!=="done")return "setup";
-    if(stageStatus("state",setup)!=="done")return "state";
-    return "entry";
-  }
-  function expandedStageFor(setup){
-    return expandedStage&&stageAccessible(expandedStage,setup)?expandedStage:currentStageFor(setup);
-  }
-  function stageStateLabel(stage,setup,locked){
-    if(locked)return "Verrouillé";
-    const status=stageStatus(stage,setup);
-    return status==="done"?"✓ Terminé":status==="stop"?"× Bloqué":"À compléter";
-  }
-  function sectionHead(stage,index,title,subtitle,setup,locked){
-    const head=setAction(makeButton("section-head","","Ouvrir l’étape "+index+" "+title),"stage-jump",stage);head.disabled=locked;
-    const copy=node("span","section-copy");copy.append(node("span","section-title",title));
-    if(subtitle)copy.append(node("span","section-sub",subtitle));
-    head.append(copy,node("span","section-state",stageStateLabel(stage,setup,locked)));return head;
-  }
-  function stageCard(stage,index,title,subtitle,setup){
-    const locked=!stageAccessible(stage,setup),collapsed=expandedStageFor(setup)!==stage;
-    const card=node("section","process-card"+(locked?" locked":"")+(collapsed?" collapsed":"")+(setup.noSetup&&stage!=="context"?" inactive-stage":""));card.dataset.stage=stage;
-    card.append(sectionHead(stage,index,title,subtitle,setup,locked));
-    const body=node("div","stage-body");card.append(body);return {card:card,body:body,locked:locked};
-  }
-  function renderProgress(container,setup){
-    const progress=node("div","progress");progress.setAttribute("aria-label","Progression du processus");
-    [{stage:"context",n:"1",label:"Contexte"},{stage:"setup",n:"2",label:"Setup"},{stage:"state",n:"3",label:"État"},{stage:"entry",n:"4",label:"CSD"}].forEach(item=>{
-      const status=stageStatus(item.stage,setup),locked=!stageAccessible(item.stage,setup),current=expandedStageFor(setup)===item.stage;
-      const box=setAction(makeButton("progress-step "+status+(current?" current":""),"","Ouvrir "+item.label),"stage-jump",item.stage);box.disabled=locked;
-      box.append(node("span","progress-num",item.n+" · "+(status==="done"?"✓":status==="stop"?"×":"…")),node("span","progress-label",item.label));
-      progress.append(box);
-    });
-    container.append(progress);
-  }
   function renderIncidentBanner(container,setup){
     const incidents=activeIncidents(setup);
     if(!incidents.length)return;
@@ -1209,49 +1179,6 @@
     banner.append(node("div","incident-title","⚠ NO GO VERROUILLÉ POUR CETTE SESSION"));
     banner.append(node("div","incident-copy",incidents.map(i=>incidentLabel(i.type)).join(" · ")+" — quitte les charts puis démarre une nouvelle session."));
     container.append(banner);
-  }
-  function renderStateStage(container,setup){
-    const stage=stageCard("state",3,"État","La question à me poser juste avant d’entrer.",setup),card=stage.card;
-    const list=node("div","question-list");
-    STATE_QUESTIONS.forEach(question=>{
-      const value=setup.traderState[question.id];
-      const validity=value?(value===question.healthy?" valid":" invalid"):"";
-      const row=node("div","state-question"+validity);row.append(node("div","question-text",question.text));
-      if(question.help)row.append(node("div","field-help",question.help));
-      const choices=node("div","binary-choice");
-      ["yes","no"].forEach(answer=>{
-        const healthy=answer===question.healthy;
-        const button=setAction(makeButton("choice-btn "+(healthy?"healthy":"unhealthy"),answer==="yes"?"OUI":"NON"),"state-answer",question.id);
-        button.dataset.value=answer;button.setAttribute("aria-pressed",String(value===answer));choices.append(button);
-      });
-      row.append(choices);list.append(row);
-    });
-    stage.body.append(list);container.append(card);
-  }
-  function renderCriterion(criterion,setup){
-    const state=setup.criterionStates[criterion.id];
-    if(criterion.behavior==="bonus"){
-      const selected=!!state;
-      const button=setAction(makeButton("bonus-btn","",criterion.shortTitle+" — "+criterion.description),"criterion-toggle",criterion.id);
-      button.setAttribute("aria-pressed",String(selected));button.title=criterion.description||"";
-      button.append(node("span","bonus-mark",selected?"✓":"+"),node("span","bonus-title",criterion.shortTitle));
-      return button;
-    }
-    const passed=state==="yes";
-    const explicitNo=state==="no";
-    const cls=passed?" valid":explicitNo?" invalid":"";
-    const row=node("div","gate-item "+criterion.behavior+cls);
-    const meta=node("div","gate-meta");const copy=node("div","gate-copy");
-    copy.append(node("div","gate-title",criterion.shortTitle));
-    if(criterion.description)copy.append(node("div","gate-description",criterion.description));
-    if(criterion.description)row.title=criterion.description;
-    meta.append(copy);row.append(meta);
-    const choices=node("div","binary-choice");
-    [["yes","OUI","yes"],["no","PAS ENCORE","wait-no"]].forEach(item=>{
-      const button=setAction(makeButton("choice-btn "+item[2],item[1]),"criterion-answer",criterion.id);
-      button.dataset.value=item[0];button.setAttribute("aria-pressed",String(state===item[0]));choices.append(button);
-    });
-    row.append(choices);return row;
   }
   let currentView = "validator";
   let journalDraft = null;
@@ -1346,13 +1273,6 @@
     const text="Je cherche le CSD dans "+(c.poi.trim()||"mon POI (à écrire)")+", pendant "+(toi.inside?toi.label:"ma TOI")+". DOL "+(c.dol.trim()||"à écrire")+".";
     return {text:text,invalidation:c.invalidation.trim()};
   }
-  function renderPhraseCard(setup,extraClass){
-    const card=node("section","phrase-card"+(extraClass?" "+extraClass:""));card.append(node("div","phrase-card-title","Ma phrase"));
-    const parts=phraseParts(setup);
-    if(!parts)card.append(node("div","phrase-card-empty","Écris ton POI et ton DOL : ta phrase s’affichera ici pendant que tu attends le CSD."));
-    else{card.append(node("div","phrase-card-text",parts.text));if(parts.invalidation)card.append(node("div","phrase-card-inv","Invalidation : "+parts.invalidation));}
-    return card;
-  }
   function renderDayNotices(container){
     const pause=lossPause(),guard=dayGuard();
     if(pause){const n=node("div","notice red");n.append(node("strong","","Pause après une perte"),document.createTextNode("Reprise possible à "+PARIS_TIME_FORMATTER.format(new Date(pause.until))+" (Paris). Quitte les charts en attendant."));container.append(n);}
@@ -1419,91 +1339,90 @@
     const box=document.getElementById("toi-timeline");if(!box||!app)return;
     if(box.dataset.key!==toiTimelineKey(setupFor()))fillToiTimeline(box);
   }
-  function renderContextStage(container,setup){
-    container.append(renderToiTimeline());
-    const stage=stageCard("context",1,"Contexte HTF","Préparé avant la session (H1 / H4 / Daily) : ma zone et ma cible.",setup),body=stage.body,off=setup.noSetup;
-    stage.card.classList.add("htf");
-    CONTEXT_FIELDS.forEach(field=>{
-      const wrap=node("div","field"),inputId="ctx-"+field.id,label=node("label","field-label",field.label+(field.required?"":" · facultatif"));
-      label.htmlFor=inputId;wrap.append(label);if(field.help)wrap.append(node("span","field-help",field.help));
-      const value=setup.context[field.id],input=node("input","text-input"+(value.trim()?" filled":""));
-      input.type="text";input.id=inputId;input.value=value;input.placeholder=field.placeholder;input.maxLength=300;input.autocomplete="off";
-      input.disabled=off;input.dataset.contextField=field.id;input.setAttribute("enterkeyhint","done");wrap.append(input);
-      if(field.chipGroups.length){
-        const parts=value.split(" + ").map(v=>v.trim());
-        const chipButton=(cls,text,chip,aria)=>{const button=setAction(makeButton(cls,text,aria),"context-chip",field.id);button.dataset.value=chip;button.setAttribute("aria-pressed",String(parts.includes(chip)));button.disabled=off;return button;};
-        field.chipGroups.forEach(group=>{
-          const row=node("div","chip-group");row.append(node("div","chip-group-title",group.title));
-          (group.pairs||[]).forEach(([name,high,low])=>{const pair=node("span","chip-pair");pair.append(node("span","chip-pair-name",name),chipButton("chip-pair-btn","H",high,high),chipButton("chip-pair-btn","L",low,low));row.append(pair);});
-          (group.items||[]).forEach(chip=>row.append(chipButton("chip",chip,chip)));
-          wrap.append(row);
-        });
-      }
-      body.append(wrap);
-    });
-    const next=setAction(makeButton("secondary-btn continue-btn","Continuer → Setup"),"stage-jump","setup");next.hidden=off||!contextFieldsDone(setup);body.append(next);
-    container.append(stage.card);
-  }
-  function renderSetupStage(container,setup){
-    const stage=stageCard("setup",2,"Setup","Le prix est dans ma zone et la liquidité attendue est prise.",setup),card=stage.card;
-    const gates=orderedCriteria("setup","gate");
-    if(gates.length){
-      const wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Validation du setup"));
-      const list=node("div","gate-list");gates.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);stage.body.append(wrap);
-    }
-    const confluences=orderedCriteria("setup","confluence");
-    if(confluences.length){
-      const wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Confluence facultative"));
-      const list=node("div","criteria-list");confluences.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);stage.body.append(wrap);
-    }
-    const warnWrap=node("div","subgroup");warnWrap.append(node("div","subgroup-title","Signaux d’abstention"),node("span","field-help","Avertissement seulement : ils ne bloquent pas le verdict."));
-    const warnList=node("div","warn-list");
-    WARNING_FLAGS.forEach(flag=>{
-      const on=!!setup.flags[flag.id],button=setAction(makeButton("warn-btn","",flag.text+". "+flag.hint),"toggle-flag",flag.id);
-      button.setAttribute("aria-pressed",String(on));button.title=flag.hint;button.disabled=setup.noSetup;
-      button.append(node("span","bonus-mark",on?"!":"+"),node("span","",flag.text));warnList.append(button);
-    });
-    warnWrap.append(warnList);stage.body.append(warnWrap);container.append(card);
-  }
-  function renderEntryStage(container,setup){
-    const stage=stageCard("entry",4,"CSD","Le changement d’orderflow attendu, dans ton POI et ta TOI.",setup),card=stage.card;
-    const triggers=orderedCriteria("entry","trigger"),wrap=node("div","subgroup");wrap.append(node("div","subgroup-title","Le setup"));
-    const list=node("div","gate-list");triggers.forEach(c=>list.append(renderCriterion(c,setup)));wrap.append(list);stage.body.append(wrap);
-    const obs=node("div","subgroup");obs.append(node("div","subgroup-title","Type de CSD / ce que j’observe · facultatif"));
-    const chips=node("div","chips");
-    CSD_OBSERVATIONS.forEach(item=>{const on=!!setup.csdObs[item.id],button=setAction(makeButton("chip",item.label),"toggle-obs",item.id);button.setAttribute("aria-pressed",String(on));button.disabled=setup.noSetup;chips.append(button);});
-    obs.append(chips,node("span","field-help","Repères d’observation : leur cumul n’est pas exigé."));stage.body.append(obs);
-    container.append(card);
-  }
   function renderNoSetupButton(container,setup){
     const wrap=node("div","no-setup-wrap"),button=setAction(makeButton("no-setup-btn",setup.noSetup?"Pas de setup — enregistré":"Pas de setup — je ne trade pas"),"no-setup");
     button.setAttribute("aria-pressed",String(setup.noSetup));button.disabled=false;
     wrap.append(button,setAction(makeButton("secondary-btn new-session-btn","Nouvelle session"),"reset-current"));container.append(wrap);
   }
+  // Validateur express (v1.20.0, demande de Pierre : le mode en 4 étapes faisait « usine à gaz » avant un trade).
+  // Un seul écran : frise TOI, POI, DOL, puis 4 cases dans l’ordre du verdict (prix dans le POI, liquidité, état, CSD) et SMT.
+  // Même moteur (getVerdict) et mêmes données de session ; types de CSD, signaux d’abstention et invalidation ne sont plus saisis.
+  const expressMoreOpen={};
+  function recentContextValues(fieldId){
+    const seen=[],current=setupFor().context[fieldId].trim();
+    for(let i=app.verdictLog.length-1;i>=0&&seen.length<4;i--){
+      const v=String(app.verdictLog[i].snap&&app.verdictLog[i].snap[fieldId]||"").trim();
+      if(v&&v.length<=40&&!seen.includes(v))seen.push(v);
+    }
+    if(current&&current.length<=40&&!seen.includes(current))seen.unshift(current);
+    return seen.slice(0,4);
+  }
+  function renderExpressField(field,setup){
+    const off=setup.noSetup,value=setup.context[field.id],wrap=node("div","field x-field");
+    wrap.append(node("div","field-label",field.label));
+    const recents=recentContextValues(field.id);
+    if(recents.length){
+      const row=node("div","x-recents");
+      recents.forEach(v=>{const b=setAction(makeButton("x-recent",v),"context-set",field.id);b.dataset.value=v;b.setAttribute("aria-pressed",String(value.trim()===v));b.disabled=off;row.append(b);});
+      wrap.append(row);
+    }
+    const more=node("details","form-more x-more");more.open=expressMoreOpen[field.id]!==undefined?expressMoreOpen[field.id]:!recents.length;
+    more.addEventListener("toggle",()=>{expressMoreOpen[field.id]=more.open;});
+    more.append(node("summary","",recents.length?"Autre / écrire":"Choisir ou écrire"));
+    const input=node("input","text-input"+(value.trim()?" filled":""));input.type="text";input.value=value;input.placeholder=field.placeholder;input.maxLength=300;input.autocomplete="off";
+    input.disabled=off;input.dataset.contextField=field.id;input.setAttribute("enterkeyhint","done");input.setAttribute("aria-label",field.label);more.append(input);
+    const parts=value.split(" + ").map(v=>v.trim());
+    const chipButton=(cls,text,chip,aria)=>{const button=setAction(makeButton(cls,text,aria),"context-chip",field.id);button.dataset.value=chip;button.setAttribute("aria-pressed",String(parts.includes(chip)));button.disabled=off;return button;};
+    field.chipGroups.forEach(group=>{
+      const row=node("div","chip-group");row.append(node("div","chip-group-title",group.title));
+      (group.pairs||[]).forEach(([name,high,low])=>{const pair=node("span","chip-pair");pair.append(node("span","chip-pair-name",name),chipButton("chip-pair-btn","H",high,high),chipButton("chip-pair-btn","L",low,low));row.append(pair);});
+      (group.items||[]).forEach(chip=>row.append(chipButton("chip",chip,chip)));
+      more.append(row);
+    });
+    wrap.append(more);return wrap;
+  }
+  function expressCheck(criterion,setup){
+    const on=setup.criterionStates[criterion.id]==="yes",b=setAction(makeButton("x-check","",criterion.shortTitle),"criterion-answer",criterion.id);
+    b.dataset.value="yes";b.setAttribute("aria-pressed",String(on));b.disabled=setup.noSetup;
+    b.append(node("span","x-check-mark",on?"✓":""),node("span","x-check-title",criterion.shortTitle));return b;
+  }
+  function renderExpressChecks(setup){
+    const card=node("section","process-card x-card x-checks");card.append(node("div","section-title","Avant d’entrer"));
+    const crit=id=>app.criteria.find(c=>c.id===id);
+    card.append(expressCheck(crit("c_htf_zone"),setup),expressCheck(crit("c_liquidity_taken"),setup));
+    STATE_QUESTIONS.forEach(question=>{
+      const value=setup.traderState[question.id],row=node("div","x-state"+(value?(value===question.healthy?" valid":" invalid"):""));
+      row.append(node("div","x-state-text",question.text));
+      const choices=node("div","binary-choice");
+      ["yes","no"].forEach(answer=>{const b=setAction(makeButton("choice-btn "+(answer===question.healthy?"healthy":"unhealthy"),answer==="yes"?"Oui":"Non"),"state-answer",question.id);b.dataset.value=answer;b.setAttribute("aria-pressed",String(value===answer));b.disabled=setup.noSetup;choices.append(b);});
+      row.append(choices);card.append(row);
+    });
+    card.append(expressCheck(crit("c_setup_liquidity"),setup));
+    const smt=crit("c_smt"),smtOn=!!setup.criterionStates.c_smt,sb=setAction(makeButton("x-smt","",smt.shortTitle),"criterion-toggle","c_smt");
+    sb.setAttribute("aria-pressed",String(smtOn));sb.disabled=setup.noSetup;sb.append(node("span","x-check-mark",smtOn?"✓":"+"),node("span","",smt.shortTitle+" · facultatif"));card.append(sb);
+    const v=getVerdict(setup);let status;
+    if(setup.noSetup)status=node("div","x-status neutral","Pas de setup enregistré pour cette session.");
+    else if(v.type==="nogo")status=node("div","x-status bad","NO GO — "+(v.cause?v.cause.message:""));
+    else if(v.type==="wait")status=node("div","x-status wait","Il manque : "+[...new Set(v.missing||[])].join(" · "));
+    else status=node("div","x-status good",(v.type==="premium"?"Conforme + SMT":"Conforme")+" — processus respecté, résultat non prédit.");
+    card.append(status);return card;
+  }
   function renderValidator(frag,setup){
-    const layout=node("div","validator-layout"),col=node("div","process-col"),side=node("aside","side-col");
-    renderProgress(col,setup);renderIncidentBanner(col,setup);renderDayNotices(col);
-    renderContextStage(col,setup);renderSetupStage(col,setup);
-    if(!setup.noSetup)col.append(renderPhraseCard(setup,"phrase-inline"));
-    renderStateStage(col,setup);renderEntryStage(col,setup);renderNoSetupButton(col,setup);
-    side.append(renderPhraseCard(setup,"phrase-side"));
-    layout.append(col,side);frag.append(layout);
+    const layout=node("div","express-view");
+    renderIncidentBanner(layout,setup);renderDayNotices(layout);layout.append(renderToiTimeline());
+    const ctx=node("section","process-card htf x-card x-context");ctx.append(node("div","section-title","Contexte HTF"));
+    CONTEXT_FIELDS.filter(f=>f.required).forEach(field=>ctx.append(renderExpressField(field,setup)));
+    layout.append(ctx,renderExpressChecks(setup));
+    renderNoSetupButton(layout,setup);frag.append(layout);
+  }
+  function setContextValue(fieldId,value){
+    const setup=setupFor();if(setup.noSetup||!CONTEXT_FIELDS.some(field=>field.id===fieldId))return;
+    setup.context[fieldId]=setup.context[fieldId].trim()===value?"":String(value).slice(0,300);scheduleSave();render();haptic(6);
   }
   function refreshLive(){
     const setup=setupFor(),verdict=getVerdict(setup);currentVerdict=verdict;renderSticky(verdict);
     if(currentView!=="validator")return;
-    const root=document.getElementById("main-content"),progress=root.querySelector(".progress");
-    if(progress){const frag=document.createDocumentFragment();renderProgress(frag,setup);progress.replaceWith(frag);}
-    [["setup",renderSetupStage],["entry",renderEntryStage]].forEach(([stage,fn])=>{
-      const old=root.querySelector('.process-card[data-stage="'+stage+'"]');if(!old)return;
-      const frag=document.createDocumentFragment();fn(frag,setup);old.replaceWith(frag);
-    });
-    root.querySelectorAll(".phrase-card").forEach(card=>card.replaceWith(renderPhraseCard(setup,card.classList.contains("phrase-inline")?"phrase-inline":"phrase-side")));
-    const context=root.querySelector('.process-card[data-stage="context"]');
-    if(context){
-      const label=context.querySelector(".section-state");if(label)label.textContent=stageStateLabel("context",setup,false);
-      const next=context.querySelector(".continue-btn");if(next)next.hidden=setup.noSetup||!contextFieldsDone(setup);
-    }
+    const old=document.querySelector("#main-content .x-checks");if(old)old.replaceWith(renderExpressChecks(setup));
     refreshToiTimeline();
   }
   function renderSticky(verdict){
@@ -2173,44 +2092,29 @@
     };
     app.incidents.push(incident);setup.incidentIds.push(incident.id);return incident;
   }
-  function scrollToStage(stage){
-    requestAnimationFrame(()=>{
-      const target=document.querySelector('[data-stage="'+stage+'"]');
-      if(target&&window.matchMedia&&window.matchMedia("(max-width:719px)").matches)target.scrollIntoView({behavior:"smooth",block:"start"});
-    });
-  }
-  function renderStageChange(stage,allowAdvance){
-    const setup=setupFor(),next=stage==="context"?"setup":stage==="setup"?"state":stage==="state"?"entry":null;
-    const shouldAdvance=!!(allowAdvance&&next&&stageStatus(stage,setup)==="done"&&stageAccessible(next,setup));
-    expandedStage=shouldAdvance?next:stage;render();if(shouldAdvance)scrollToStage(next);
-  }
-  function openStage(stage){
-    if(!["state","context","setup","entry"].includes(stage)||!stageAccessible(stage,setupFor()))return;
-    expandedStage=stage;render();scrollToStage(stage);
-  }
   function setStateAnswer(id,value){
     const question=STATE_QUESTIONS.find(q=>q.id===id);if(!question||!["yes","no"].includes(value)||setupFor().noSetup)return;
     const setup=setupFor(),next=setup.traderState[id]===value?null:value;
     setup.traderState[id]=next;
     if(next&&next!==question.healthy)triggerIncident(question.incidentType||"clarity","state");
-    scheduleSave();renderStageChange("state",true);haptic(next===null?6:next===question.healthy?8:[18,25,18]);
+    scheduleSave();render();haptic(next===null?6:next===question.healthy?8:[18,25,18]);
   }
   function setCriterionAnswer(id,value){
     const criterion=app.criteria.find(c=>c.id===id);if(!criterion||setupFor().noSetup)return;
     const allowed=["yes","no"];
     if(!allowed.includes(value))return;
     const setup=setupFor(),next=setup.criterionStates[id]===value?null:value;
-    setup.criterionStates[id]=next;scheduleSave();renderStageChange(criterion.section==="entry"?"entry":"setup",true);haptic(next===null?6:next==="no"?[15,22,15]:8);
+    setup.criterionStates[id]=next;scheduleSave();render();haptic(next===null?6:next==="no"?[15,22,15]:8);
   }
   function toggleCriterion(id){
     const criterion=app.criteria.find(c=>c.id===id);if(!criterion||setupFor().noSetup)return;
-    setupFor().criterionStates[id]=setupFor().criterionStates[id]?0:1;scheduleSave();expandedStage="setup";render();haptic(8);
+    setupFor().criterionStates[id]=setupFor().criterionStates[id]?0:1;scheduleSave();render();haptic(8);
   }
   function chooseNoSetup(){
     const setup=setupFor();
     if(setup.noSetup){
       setup.noSetup=false;removeJournalEntries(entry=>entry.kind==="no_trade"&&entry.sessionId===setup.sessionId);
-      scheduleSave();expandedStage="context";render();haptic(6);showToast("Choix « Pas de setup » retiré.");return;
+      scheduleSave();render();haptic(6);showToast("Choix « Pas de setup » retiré.");return;
     }
     activeIncidents(setup).forEach(i=>{i.status="abandoned";i.resolvedAt=isoNow();});
     setup.noSetup=true;setup.entryState=null;
@@ -2218,13 +2122,13 @@
     removeJournalEntries(entry=>entry.kind==="no_trade"&&entry.sessionId===setup.sessionId);
     const before=disciplineStats(),beforeBadges=earnedBadgeIds();
     app.journal.push(normalizeJournalEntry({id:uniqueId("j"),kind:"no_trade",createdAt:isoNow(),date:ymd(p),time:hm(p.hour*60+p.minute),sessionId:setup.sessionId,summary:parts?parts.text:"Aucun contexte écrit."},0));
-    saveNow();expandedStage="context";render();haptic([12,30,12]);const feedback=disciplineFeedback(before,beforeBadges);showToast("Pas de setup : bonne décision"+(feedback?" · "+feedback:"."));
+    saveNow();render();haptic([12,30,12]);const feedback=disciplineFeedback(before,beforeBadges);showToast("Pas de setup : bonne décision"+(feedback?" · "+feedback:"."));
   }
   function applyContextChip(fieldId,value){
     const setup=setupFor();if(setup.noSetup||!CONTEXT_FIELDS.some(field=>field.id===fieldId)||!value)return;
     const parts=setup.context[fieldId].split(" + ").map(v=>v.trim()).filter(Boolean);
     const next=parts.includes(value)?parts.filter(v=>v!==value):parts.concat(value);
-    setup.context[fieldId]=next.join(" + ").slice(0,300);scheduleSave();expandedStage="context";render();haptic(6);
+    setup.context[fieldId]=next.join(" + ").slice(0,300);scheduleSave();render();haptic(6);
   }
   function setToiOverride(value){
     const setup=setupFor();if(setup.noSetup||!["yes","no"].includes(value))return;
@@ -2233,13 +2137,13 @@
     else if(!current&&auto===value)return;
     else if(value===auto){setup.toiOverride=null;setup.toiOverrideAt=null;}
     else{setup.toiOverride=value;setup.toiOverrideAt=Date.now();}
-    scheduleSave();expandedStage="context";render();haptic(8);
+    scheduleSave();render();haptic(8);
   }
   function toggleSetupFlag(group,id,stage){
     const setup=setupFor();if(setup.noSetup)return;
     const allowed=group==="flags"?WARNING_FLAGS:CSD_OBSERVATIONS;if(!allowed.some(item=>item.id===id))return;
     if(setup[group][id])delete setup[group][id];else setup[group][id]=true;
-    scheduleSave();expandedStage=stage;render();haptic(6);
+    scheduleSave();render();haptic(6);
   }
   // Bouton retour (Android, navigateur, souris) : une entrée d’historique tant qu’une feuille ou une confirmation est ouverte.
   // Retour ferme la couche du dessus au lieu de quitter l’appli (v1.14.0). Une seule entrée, quel que soit le nombre de couches.
@@ -2554,7 +2458,7 @@
   document.getElementById("main-content").addEventListener("click",event=>{
     const target=event.target.closest("[data-action]");if(!target)return;
     const action=target.dataset.action,id=target.dataset.id,value=target.dataset.value;
-    if(action==="stage-jump")openStage(id);
+    if(action==="context-set")setContextValue(id,value);
     else if(action==="state-answer")setStateAnswer(id,value);
     else if(action==="criterion-answer")setCriterionAnswer(id,value);
     else if(action==="criterion-toggle")toggleCriterion(id);
